@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>لوحة التحكم – نظام إدارة الزيارات التفتيشية</title>
+    <meta name="description" content="لوحة تحكم مدير النظام لإدارة الحسابات" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- Loader -->
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="brand">
+            <span>🏫</span> نظام إدارة الزيارات التفتيشية
+        </div>
+        <div class="nav-links">
+            <span class="user-info" id="navUserInfo"></span>
+            <a href="visit.html" class="btn btn-ghost btn-sm">📋 سجل الزيارات</a>
+            <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon blue">👤</div>
+                <div class="stat-info">
+                    <h3 id="statTotal">0</h3>
+                    <p>إجمالي الحسابات</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber">🔍</div>
+                <div class="stat-info">
+                    <h3 id="statInspectors">0</h3>
+                    <p>المفتشون</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">🏢</div>
+                <div class="stat-info">
+                    <h3 id="statManagers">0</h3>
+                    <p>المسيّرون</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create User Card -->
+        <div class="card fade-in">
+            <div class="card-title">➕ إنشاء حساب جديد</div>
+            <form id="createUserForm" novalidate>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="newName">الاسم الكامل</label>
+                        <input type="text" id="newName" name="name" placeholder="اسم المستخدم الكامل" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="newUsername">اسم الدخول</label>
+                        <input type="text" id="newUsername" name="username" placeholder="اسم تسجيل الدخول" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">كلمة المرور</label>
+                        <input type="password" id="newPassword" name="password" placeholder="كلمة المرور" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="newRole">الدور</label>
+                        <select id="newRole" name="role" required>
+                            <option value="">-- اختر الدور --</option>
+                            <option value="inspector">مفتش</option>
+                            <option value="manager">مسيّر</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="reset" class="btn btn-ghost">↺ إعادة تعيين</button>
+                    <button type="submit" class="btn btn-accent" id="createBtn">
+                        ✅ إنشاء الحساب
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Users Table Card -->
+        <div class="card fade-in">
+            <div class="card-title" style="justify-content:space-between;">
+                <span>👥 قائمة الحسابات</span>
+                <span id="usersCount" style="font-size:0.85rem;color:var(--text-muted);font-weight:400;"></span>
+            </div>
+            <div class="table-wrap">
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>الاسم الكامل</th>
+                            <th>اسم الدخول</th>
+                            <th>الدور</th>
+                            <th>تاريخ الإنشاء</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-state"><span class="icon">⏳</span>جارٍ التحميل...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Auth guard – admin only
+        const session = requireAuth(['admin']);
+        if (!session) throw new Error('Not authenticated');
+
+        // Display user info in nav
+        document.getElementById('navUserInfo').innerHTML =
+            `مرحباً <strong>${session.name}</strong> &nbsp;|&nbsp; <span class="badge badge-admin">${roleLabel(session.role)}</span>`;
+
+        // ── Render Users Table ──────────────────────────────────────
+        function renderUsers() {
+            const users = getUsers();
+            const tbody = document.getElementById('usersTableBody');
+            const count = document.getElementById('usersCount');
+
+            // Stats
+            document.getElementById('statTotal').textContent = users.length;
+            document.getElementById('statInspectors').textContent = users.filter(u => u.role === 'inspector').length;
+            document.getElementById('statManagers').textContent = users.filter(u => u.role === 'manager').length;
+            count.textContent = users.length + ' حساب';
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><span class="icon">👤</span>لا توجد حسابات بعد</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map((u, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${u.name}</td>
+          <td><code style="background:rgba(255,255,255,.05);padding:2px 6px;border-radius:6px;">${u.username}</code></td>
+          <td><span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
+          <td>${new Date(u.createdAt).toLocaleDateString('ar-DZ')}</td>
+          <td>
+            ${u.role !== 'admin' ? `
+              <button class="btn btn-danger btn-sm" onclick="handleDelete('${u.id}', '${u.name}')">
+                🗑️ حذف
+              </button>` : '<span style="color:var(--text-muted);font-size:0.82rem;">محمي</span>'}
+          </td>
+        </tr>
+      `).join('');
+        }
+
+        // ── Delete User ─────────────────────────────────────────────
+        function handleDelete(id, name) {
+            if (!confirm(`هل تريد حذف حساب "${name}"؟`)) return;
+            deleteUser(id);
+            renderUsers();
+            showToast(`تمّ حذف حساب ${name}`, 'warning');
+        }
+
+        // ── Create User Form ────────────────────────────────────────
+        document.getElementById('createUserForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = document.getElementById('createBtn');
+            const name = form.name.value.trim();
+            const username = form.username.value.trim();
+            const password = form.password.value.trim();
+            const role = form.role.value;
+
+            if (!name || !username || !password || !role) {
+                showToast('يرجى ملء جميع الحقول', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'جارٍ الإنشاء...';
+
+            setTimeout(() => {
+                const result = addUser({ username, password, role, name });
+                if (result.ok) {
+                    showToast(`✅ تمّ إنشاء حساب ${name} بنجاح`);
+                    form.reset();
+                    renderUsers();
+                } else {
+                    showToast('❌ ' + result.msg, 'error');
+                }
+                btn.disabled = false;
+                btn.innerHTML = '✅ إنشاء الحساب';
+            }, 300);
+        });
+
+        // ── Init ────────────────────────────────────────────────────
+        renderUsers();
+    </script>
+</body>
+
+</html>
