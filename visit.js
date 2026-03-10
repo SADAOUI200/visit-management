@@ -392,7 +392,6 @@ async function handleVisitSubmit(e) {
         form.reset();
         // Reset form state and close modal
         resetFormFilters();
-        if (typeof hideVisitModal === 'function') hideVisitModal();
         await loadVisits();
     } else {
         showToast('❌ ' + (result.msg || 'حدث خطأ أثناء الإرسال'), 'error');

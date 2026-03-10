@@ -39,12 +39,9 @@
 
     <div class="container">
 
-        <!-- ── Visit Entry Form (modal) ───────────────────────────── -->
-        <div id="visitModal" class="modal">
-          <div class="modal-content">
-            <button id="closeVisitModal" class="modal-close">&times;</button>
-            <div class="card fade-in">
-                <div class="card-title">✏️ إدخال زيارة تفتيشية جديدة</div>
+        <!-- ── Visit Entry Form ───────────────────────────── -->
+        <div class="card fade-in">
+            <div class="card-title">✏️ إدخال زيارة تفتيشية جديدة</div>
 
             <!-- Loading state for dropdowns -->
             <div id="formLoadingMsg" style="
@@ -194,7 +191,6 @@
         <div class="card fade-in">
             <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
                 <span>🔍 البحث وعرض الزيارات</span>
-                <button id="openVisitBtn" class="btn btn-accent btn-sm">➕ إضافة زيارة</button>
                 <span id="resultsCount" style="font-size:0.85rem;color:var(--text-muted);font-weight:400;"></span>
             </div>
 
@@ -528,46 +524,6 @@
             await loadVisits();
             btn.textContent = '🔄 تحديث';
         });
-
-        // ── Modal controls ──────────────────────────────────────
-        const openBtn = document.getElementById('openVisitBtn');
-        if (openBtn) {
-            openBtn.addEventListener('click', () => {
-                resetFormFilters();
-                document.getElementById('visitForm').reset();
-                showVisitModal();
-            });
-        }
-        const closeBtn = document.getElementById('closeVisitModal');
-        if (closeBtn) closeBtn.addEventListener('click', hideVisitModal);
-
-        function showVisitModal() {
-            const m = document.getElementById('visitModal');
-            if (m) {
-                m.style.display = 'flex';
-                setTimeout(() => {
-                    const first = document.getElementById('stageSelect');
-                    if (first) first.focus();
-                }, 50);
-            }
-        }
-        function hideVisitModal() {
-            const m = document.getElementById('visitModal');
-            if (m) m.style.display = 'none';
-            // clear form fields when closing
-            const form = document.getElementById('visitForm');
-            if (form) {
-                form.reset();
-                resetFormFilters();
-            }
-        }
-        // close when clicking outside content
-        const visitModalEl = document.getElementById('visitModal');
-        if (visitModalEl) {
-            visitModalEl.addEventListener('click', (e) => {
-                if (e.target === e.currentTarget) hideVisitModal();
-            });
-        }
 
         // ── Initialize form dropdowns ───────────────────────────
         initFormDropdowns();
