@@ -139,6 +139,26 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
+// ── Error Message ────────────────────────────────────────────
+function showError(msg, duration = 4000) {
+    showToast('❌ ' + msg, 'error', duration);
+}
+
+function showSuccess(msg, duration = 3000) {
+    showToast('✅ ' + msg, 'success', duration);
+}
+
+// ── Update User Info in Navbar ───────────────────────────────
+function updateUserInfo() {
+    const session = getSession();
+    if (!session) return;
+    
+    const navUserInfo = document.getElementById('navUserInfo');
+    if (navUserInfo) {
+        navUserInfo.innerHTML = `مرحباً <strong>${session.name}</strong> &nbsp;|&nbsp; <span class="badge ${roleBadgeClass(session.role)}">${roleLabel(session.role)}</span>`;
+    }
+}
+
 // ── Role label helper ────────────────────────────────────────
 function roleLabel(role) {
     return { admin: 'مدير النظام', inspector: 'مفتش', manager: 'مسيّر' }[role] || role;

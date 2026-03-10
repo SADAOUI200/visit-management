@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>إدارة المفتشين – نظام إدارة الزيارات التفتيشية</title>
+    <meta name="description" content="إضافة وعرض قائمة المفتشين" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- Loader -->
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="brand">
+            <span>🏫</span> نظام إدارة الزيارات التفتيشية
+        </div>
+        <div class="nav-links">
+            <span class="user-info" id="navUserInfo"></span>
+            <a href="dashboard.html" class="btn btn-ghost btn-sm">⚙️ لوحة التحكم</a>
+            <a href="visit.html" class="btn btn-ghost btn-sm">📋 الزيارات</a>
+            <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <!-- Page Header -->
+        <div style="margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem;">
+            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                        display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔍</div>
+            <div>
+                <h2 style="margin:0;font-size:1.4rem;color:var(--text);">إدارة المفتشين</h2>
+                <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">إضافة وعرض قائمة المفتشين المسجّلين</p>
+            </div>
+            <span id="inspectorCount" style="margin-right:auto;background:rgba(99,102,241,0.15);color:#a5b4fc;
+                  padding:4px 14px;border-radius:20px;font-size:0.85rem;font-weight:600;"></span>
+        </div>
+
+        <!-- ── Add Inspector Form ──────────────────────────────── -->
+        <div class="card fade-in">
+            <div class="card-title">➕ إضافة مفتش جديد</div>
+            <form id="inspectorForm" novalidate>
+                <div class="form-grid">
+
+                    <!-- الاسم الكامل -->
+                    <div class="form-group">
+                        <label for="inspFullName">الاسم الكامل <span class="req">*</span></label>
+                        <input type="text" id="inspFullName" name="fullName"
+                            placeholder="اسم المفتش كاملاً" required />
+                    </div>
+
+                    <!-- التخصص -->
+                    <div class="form-group">
+                        <label for="inspSpecialty">التخصص <span class="req">*</span></label>
+                        <select id="inspSpecialty" name="specialty" required>
+                            <option value="">-- اختر التخصص --</option>
+                        </select>
+                    </div>
+
+                    <!-- المرحلة التعليمية -->
+                    <div class="form-group">
+                        <label for="inspLevel">المرحلة التعليمية <span class="req">*</span></label>
+                        <select id="inspLevel" name="level" required>
+                            <option value="">-- اختر المرحلة --</option>
+                            <option>ابتدائي</option>
+                            <option>متوسط</option>
+                            <option>ثانوي</option>
+                        </select>
+                    </div>
+
+                    <!-- الرتبة الوظيفية -->
+                    <div class="form-group">
+                        <label for="inspRank">الرتبة الوظيفية <span class="req">*</span></label>
+                        <select id="inspRank" name="rank" required>
+                            <option value="">-- اختر الرتبة --</option>
+                            <option>مفتش مساعد</option>
+                            <option>مفتش</option>
+                            <option>مفتش أول</option>
+                            <option>مفتش عام</option>
+                        </select>
+                    </div>
+
+                    <!-- رقم الهاتف (اختياري) -->
+                    <div class="form-group">
+                        <label for="inspPhone">رقم الهاتف <span style="color:var(--text-muted);font-size:0.78rem;">(اختياري)</span></label>
+                        <input type="tel" id="inspPhone" name="phone"
+                            placeholder="مثال: 0555 123 456" />
+                    </div>
+
+                </div><!-- /form-grid -->
+
+                <div class="form-actions">
+                    <button type="reset" class="btn btn-ghost" id="inspResetBtn">↺ مسح الحقول</button>
+                    <button type="submit" class="btn btn-accent" id="inspSubmitBtn">
+                        <span>💾</span> حفظ المفتش
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ── Inspectors Table ────────────────────────────────── -->
+        <div class="card fade-in">
+            <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                <span>🔍 قائمة المفتشين</span>
+            </div>
+
+            <!-- Search -->
+            <div class="search-bar" style="margin-bottom:1.25rem;">
+                <div class="form-group">
+                    <label for="searchInspName">🔎 اسم المفتش</label>
+                    <div class="search-input-wrap">
+                        <input type="search" id="searchInspName" placeholder="ابحث بالاسم..." />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="searchInspSpecialty">📚 التخصص</label>
+                    <div class="search-input-wrap">
+                        <input type="search" id="searchInspSpecialty" placeholder="ابحث بالتخصص..." />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="searchInspLevel">🎓 المرحلة</label>
+                    <select id="searchInspLevel">
+                        <option value="">-- كل المراحل --</option>
+                        <option>ابتدائي</option>
+                        <option>متوسط</option>
+                        <option>ثانوي</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-self:flex-end;">
+                    <button class="btn btn-ghost" onclick="clearInspSearch()" style="width:100%;">✕ مسح البحث</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table id="inspectorsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>الاسم الكامل</th>
+                            <th>التخصص</th>
+                            <th>المرحلة</th>
+                            <th>الرتبة الوظيفية</th>
+                            <th>رقم الهاتف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inspectorsTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <span class="icon">⏳</span>جارٍ تحميل البيانات...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div><!-- /container -->
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+    <script src="inspectors.js"></script>
+</body>
+
+</html>

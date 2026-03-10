@@ -598,6 +598,42 @@ tbody tr:last-child {
     margin: 1.25rem 0;
 }
 
+/* ── Modal Overlay Styles ─────────────────────────────────── */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+}
+
+.modal-content {
+    position: relative;
+    max-width: 900px;
+    width: 90%;
+    margin: 1rem;
+}
+
+.modal-close {
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.modal-close:hover {
+    color: var(--accent-light);
+}
+
 /* ── Form Actions ── */
 .form-actions {
     display: flex;

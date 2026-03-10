@@ -1,10 +1,10 @@
 /**
  * نظام إدارة الزيارات التفتيشية
  * visit.js – Google Sheets Integration, Visit CRUD, Dynamic Search
- * v3 – Position-based mapping + diagnostic panel
+ * v4 – Multi-sheet architecture (inspectors · institutions · visits)
+ *
+ * ملاحظة: SHEETS_URL مُعرَّف في data.js
  */
-
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzbxEK0o4EAQp-xSaNFwxyYhj1eKpdoZwcCkVrFgygphgVIe2HqqO8ivMw8eYgyhkT3/exec';
 
 // الترتيب الرسمي للأعمدة كما هو في الشيت (0-indexed)
 const FIELD_NAMES = [
@@ -26,6 +26,7 @@ const FIELD_NAMES = [
 ];
 
 let allVisits = [];
+let filteredVisits = []; // Visits filtered by user role
 // خريطة ديناميكية: اسم الحقل الفعلي في الـ API → اسم الحقل الرسمي
 let columnMapping = {};
 
@@ -208,7 +209,8 @@ async function submitVisit(formData) {
             // أرسل أيضاً كصف مُرتَّب
             row: FIELD_NAMES.map(f => formData[f] ?? '')
         };
-        await fetch(SHEETS_URL, {
+        const visitsURL = getSheetURL('visits');
+        await fetch(visitsURL, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
@@ -226,8 +228,9 @@ async function submitVisit(formData) {
 async function fetchVisits() {
     showLoader();
     try {
-        const url = SHEETS_URL + '?action=get&sheet=visit&sheetName=visit';
-        const res = await fetch(url, { method: 'GET', mode: 'cors' });
+        const visitsURL = getSheetURL('visits');
+        const url = visitsURL + '?action=get&sheet=visit&sheetName=visit';
+        const res = await fetchWithTimeout(url, { method: 'GET', mode: 'cors' }, 20000);
         if (!res.ok) throw new Error('HTTP ' + res.status);
 
         const raw = await res.json();
@@ -243,7 +246,12 @@ async function fetchVisits() {
         hideLoader();
         return { ok: true, data };
     } catch (err) {
-        console.error('[visit.js] fetchVisits error:', err);
+        if (err.name === 'AbortError') {
+            console.error('[visit.js] fetchVisits timed out after 20s');
+            err.message = 'انتهت المهلة';
+        } else {
+            console.error('[visit.js] fetchVisits error:', err);
+        }
         hideLoader();
         return { ok: false, data: [], msg: err.message };
     }
@@ -291,7 +299,7 @@ function applySearch() {
     const instQ = (document.getElementById('searchInst')?.value || '').trim().toLowerCase();
     const inspecQ = (document.getElementById('searchInspector')?.value || '').trim().toLowerCase();
 
-    const filtered = allVisits.filter(v => {
+    const searched = filteredVisits.filter(v => {
         const name = (getField(v, 'اسم المعني بالزيارة') || '').toLowerCase();
         const inst = (getField(v, 'المؤسسة') || '').toLowerCase();
         const inspec = (getField(v, 'اسم المفتش') || '').toLowerCase();
@@ -301,8 +309,8 @@ function applySearch() {
     });
 
     const countEl = document.getElementById('resultsCount');
-    if (countEl) countEl.textContent = `${filtered.length} نتيجة`;
-    renderTable(filtered, 'visitsTableBody');
+    if (countEl) countEl.textContent = `${searched.length} نتيجة`;
+    renderTable(searched, 'visitsTableBody');
 }
 
 // ── Format Date ───────────────────────────────────────────────
@@ -317,12 +325,25 @@ function formatDate(val) {
 
 // ── Load & Render All Visits ──────────────────────────────────
 async function loadVisits() {
+    console.log('[visit.js] loadVisits called');
     const result = await fetchVisits();
+    console.log('[visit.js] fetchVisits result', result);
     allVisits = result.data;
-    renderTable(allVisits, 'visitsTableBody');
+
+    // Filter visits based on user role
+    const session = getSession();
+    if (session && session.role === 'inspector') {
+        // Inspectors only see their own visits
+        filteredVisits = allVisits.filter(visit => visit['اسم المفتش'] === session.name);
+    } else {
+        // Admins and managers see all visits
+        filteredVisits = allVisits;
+    }
+
+    renderTable(filteredVisits, 'visitsTableBody');
 
     const countEl = document.getElementById('resultsCount');
-    if (countEl) countEl.textContent = `${allVisits.length} نتيجة`;
+    if (countEl) countEl.textContent = `${filteredVisits.length} نتيجة`;
 
     if (!result.ok) {
         showToast('تعذّر الاتصال بقاعدة البيانات: ' + (result.msg || ''), 'warning');
@@ -335,16 +356,28 @@ async function handleVisitSubmit(e) {
     const session = getSession();
     const form = e.target;
 
+    // Inspector name: for inspectors, always use session name; for others, from select
+    let inspectorName;
+    if (session.role === 'inspector') {
+        inspectorName = session.name;
+    } else {
+        inspectorName = document.getElementById('inspectorSelect')?.value || session?.name || '';
+    }
+
+    // Institution name: from select dropdown
+    const institutionName = document.getElementById('institutionSelect')?.value
+        || '';
+
     const visitData = {
         'المعرف': generateId(),
         'timestamp': new Date().toISOString(),
-        'اسم المفتش': session?.name || form.inspector?.value || '',
+        'اسم المفتش': inspectorName,
         'التخصص': form.specialty?.value || '',
         'المرحلة': form.stage?.value || '',
         'اسم المعني بالزيارة': form.visitee?.value || '',
         'الرتبة': form.rank?.value || '',
         'الدرجة': form.grade?.value || '',
-        'المؤسسة': form.institution?.value || '',
+        'المؤسسة': institutionName,
         'تاريخ الزيارة': form.visitDate?.value || '',
         'نوع الزيارة': form.visitType?.value || '',
         'النقطة': form.score?.value || '',
@@ -357,9 +390,54 @@ async function handleVisitSubmit(e) {
     if (result.ok) {
         showToast('✅ تمّت إضافة الزيارة بنجاح');
         form.reset();
-        if (form.inspector && session) form.inspector.value = session.name;
+        // Reset form state and close modal
+        resetFormFilters();
+        if (typeof hideVisitModal === 'function') hideVisitModal();
         await loadVisits();
     } else {
         showToast('❌ ' + (result.msg || 'حدث خطأ أثناء الإرسال'), 'error');
     }
+}
+
+// ── Reset form filters after submission ───────────────────────
+function resetFormFilters() {
+    const stageSelect = document.getElementById('stageSelect');
+    const inspectorSelect = document.getElementById('inspectorSelect');
+    const specialtySelect = document.getElementById('specialty');
+    const municipalitySelect = document.getElementById('municipalitySelect');
+    const institutionSelect = document.getElementById('institutionSelect');
+
+    stageSelect.value = '';
+    inspectorSelect.innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
+    inspectorSelect.disabled = true;
+    specialtySelect.innerHTML = '<option value="">-- سيظهر تلقائياً --</option>';
+    specialtySelect.disabled = true;
+    municipalitySelect.value = '';
+    institutionSelect.innerHTML = '<option value="">-- اختر المرحلة والبلدية أولاً --</option>';
+    institutionSelect.disabled = true;
+}
+
+// ── Get unique municipalities from institutions ───────────────
+function getUniqueMunicipalities(institutions) {
+    const municipalities = new Set();
+    institutions.forEach(inst => {
+        const mun = (inst['البلدية'] || '').trim();
+        if (mun) municipalities.add(mun);
+    });
+    return Array.from(municipalities).sort();
+}
+
+// ── Filter inspectors by educational level ────────────────────
+function filterInspectorsByLevel(inspectors, level) {
+    if (!level) return [];
+    return inspectors.filter(ins => (ins['المرحلة'] || '') === level);
+}
+
+// ── Filter institutions by level and municipality ─────────────
+function filterInstitutionsByLevelAndMunicipality(institutions, level, municipality) {
+    if (!level || !municipality) return [];
+    return institutions.filter(inst =>
+        (inst['المرحلة'] || '') === level &&
+        (inst['البلدية'] || '') === municipality
+    );
 }
