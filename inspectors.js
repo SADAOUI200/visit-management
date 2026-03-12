@@ -108,7 +108,7 @@ async function handleInspectorSubmit(e) {
         'الاسم الكامل': formData.get('fullName').trim(),
         'التخصص': formData.get('specialty').trim(),
         'المرحلة': formData.get('level').trim(),
-        'الرتبة': formData.get('rank').trim(),
+        'الرتبة الوظيفية': formData.get('rank').trim(),
         'الهاتف': formData.get('phone').trim()
     };
 
@@ -221,4 +221,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initInspectorsPage();
 
 });
+
 
