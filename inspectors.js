@@ -105,7 +105,7 @@ async function handleInspectorSubmit(e) {
 
     const formData = new FormData(inspectorForm);
     const inspectorData = {
-        'الاسم': formData.get('fullName').trim(),
+        'الاسم الكامل': formData.get('fullName').trim(),
         'التخصص': formData.get('specialty').trim(),
         'المرحلة': formData.get('level').trim(),
         'الرتبة': formData.get('rank').trim(),
@@ -219,4 +219,5 @@ document.addEventListener('DOMContentLoaded', () => {
     populateRankDropdown();
 
     initInspectorsPage();
+
 });
