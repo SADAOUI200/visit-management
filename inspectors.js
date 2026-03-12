@@ -113,7 +113,7 @@ async function handleInspectorSubmit(e) {
     };
 
     // Validation
-    if (!inspectorData['الاسم']) {
+    if (!inspectorData['الاسم الكامل']) {
         showError('يرجى إدخال اسم المفتش');
         return;
     }
@@ -221,3 +221,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initInspectorsPage();
 
 });
+
