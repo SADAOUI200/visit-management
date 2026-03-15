@@ -179,9 +179,15 @@
                         </select>
                     </div>
                     <!-- الملاحظة -->
-                    <div class="form-group full-width">
-                        <label for="notes">الملاحظة</label>
-                        <textarea id="notes" name="notes" placeholder="أدخل ملاحظاتك التفصيلية هنا..."></textarea>
+                    <div class="form-group">
+                        <label for="notes"> الملاحظة <span class="req">*</span></label>
+                        <select id="notes" name="notes" required>
+                            <option value="">-- حدد نوع الملاحظة --</option>
+                            <option>العمل بالتوجيهات والنصائح المقدمة </option>
+                            <option>تثمين الجهد المبذول </option>
+                            <option>العمل على تدارك النقائص المسجلة </option>
+                            <option> تحويل التحقيق للوصاية لاتخاذ التدابير المناسبة</option>
+                        </select>
                     </div>
 
                 </div><!-- /form-grid -->
