@@ -166,10 +166,17 @@
 
                     <!-- العقوبات والاجازات -->
                     <div class="form-group">
-                        <label for="penalties">العقوبات</label>
-                        <input type="text" id="penalties" name="penalties" placeholder="اذكر العقوبة إن وجدت" />
+                        <label for="penalties">العقوبات والاجازات <span class="req">*</span></label>
+                        <select id="penalties" name="penalties" required>
+                            <option value="">-- حدد المقترح --</option>
+                            <option>إقتراح تشجيع</option>
+                            <option>إقتراح إنذار</option>
+                            <option>إقتراح توبيخ</option>
+                            <option>إقتراح لجنة تحقيق</option>
+                            <option>إقراح الترسيم</option>
+                            <option>إقراح التأجيل</option>
+                        </select>
                     </div>
-
                     <!-- الملاحظة -->
                     <div class="form-group full-width">
                         <label for="notes">الملاحظة</label>
