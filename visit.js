@@ -1,5 +1,5 @@
 /**
- * نظام إدارة الزيارات التفتيشية - نسخة مصلحة التكوين
+ * نظام إدارة الزيارات التفتيشية - نسخة مصلحة التكوين والتفتيش
  * المطور: سعداوي زين العابدين
  */
 
@@ -14,7 +14,7 @@ let allVisits = [];
 let filteredVisits = [];
 let columnMapping = {};
 
-// ── نظام الترقيم (Pagination) ──────────────────────────────────
+// ── إعدادات الترقيم (Pagination) ──────────────────────────────
 let currentPage = 1;
 const rowsPerPage = 10;
 
@@ -42,6 +42,7 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
+// ── جلب البيانات من السكريبت ──────────────────────────────────
 async function fetchVisits() {
     if (typeof showLoader === 'function') showLoader();
     try {
@@ -63,14 +64,13 @@ function renderTable(visits) {
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات مطابقة</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات</td></tr>';
         updatePaginationControls(0);
         return;
     }
 
     const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const paginated = visits.slice(start, end);
+    const paginated = visits.slice(start, start + rowsPerPage);
 
     tbody.innerHTML = paginated.map((v, i) => `
         <tr>
@@ -103,7 +103,7 @@ function updatePaginationControls(total) {
     container.innerHTML = `
         <button class="btn btn-sm" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>⏮️ الأولى</button>
         <button class="btn btn-sm" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>السابق</button>
-        <span style="margin: 0 15px; font-weight: bold;">صفحة ${currentPage} من ${totalPages || 1}</span>
+        <span style="margin: 0 10px;">صفحة ${currentPage} من ${totalPages || 1}</span>
         <button class="btn btn-sm" onclick="changePage(1)" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>التالي</button>
         <button class="btn btn-sm" onclick="goToPage(${totalPages})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>الأخيرة ⏭️</button>
     `;
@@ -115,12 +115,7 @@ function goToPage(p) { currentPage = p; renderTable(filteredVisits); }
 async function loadVisits() {
     const result = await fetchVisits();
     allVisits = result.data;
-    const session = getSession();
-    filteredVisits = (session && session.role === 'inspector') 
-        ? allVisits.filter(v => normalizeKey(getField(v, 'اسم المفتش')) === normalizeKey(session.name))
-        : allVisits;
-    currentPage = 1;
-    renderTable(filteredVisits);
+    applySearch(); // لتطبيق الفلترة الأولية حسب الصلاحيات
 }
 
 function applySearch() {
@@ -145,7 +140,7 @@ function formatDate(val) {
 }
 
 async function handleVisitSubmit(e) {
-    if (e) e.preventDefault();
+    e.preventDefault();
     const form = e.target;
     const visitData = {
         'المعرف': generateId(),
@@ -172,7 +167,7 @@ async function handleVisitSubmit(e) {
             mode: 'no-cors',
             body: JSON.stringify({ action: 'insert', sheet: 'visit', data: visitData })
         });
-        showToast('✅ تم تسجيل الزيارة بنجاح');
+        showToast('✅ تم الحفظ بنجاح');
         form.reset();
         await loadVisits();
     } catch (err) { console.error(err); }
