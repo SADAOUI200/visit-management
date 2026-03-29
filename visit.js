@@ -1,6 +1,6 @@
 /**
- * نظام إدارة الزيارات التفتيشية - النسخة الاحترافية المصلحة
- * مبرمج المشروع: سعداوي زين العابدين
+ * نظام إدارة الزيارات التفتيشية - نسخة مستقرة v6
+ * المطور: سعداوي زين العابدين
  */
 
 const FIELD_NAMES = [
@@ -12,14 +12,12 @@ const FIELD_NAMES = [
 
 let allVisits = [];
 let filteredVisits = [];
-let _inspectorsList = []; // قائمة المفتشين العالمية
+let _inspectorsList = []; // لتخزين بيانات المفتشين محلياً للتخصص التلقائي
 
-// تنظيف النصوص
 function normalizeKey(str) {
     return String(str || '').trim().replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
 }
 
-// جلب قيمة الحقل
 function getField(row, ...keys) {
     for (const key of keys) {
         if (row[key] !== undefined && row[key] !== null) return row[key];
@@ -29,14 +27,13 @@ function getField(row, ...keys) {
     return '';
 }
 
-// جلب البيانات من Google Sheets
 async function fetchVisits() {
     if (typeof showLoader === 'function') showLoader();
     try {
         const url = getSheetURL('visits') + '?action=get&sheet=visit';
         const res = await fetch(url);
         const raw = await res.json();
-        const data = Array.isArray(raw) ? raw : (raw.data || []);
+        let data = Array.isArray(raw) ? raw : (raw.data || []);
         if (typeof hideLoader === 'function') hideLoader();
         return { ok: true, data };
     } catch (err) {
@@ -45,20 +42,20 @@ async function fetchVisits() {
     }
 }
 
-// عرض الجدول مع عمود الملاحظة (16 عموداً)
+// عرض الجدول مع عمود الملاحظة
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد بيانات للعرض</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد بيانات مسجلة</td></tr>';
         return;
     }
 
     tbody.innerHTML = visits.map((v, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td style="font-size: 10px;">${(getField(v, 'المعرف', 'id') || '').substring(0, 8)}</td>
+            <td style="font-size: 10px; color: #6366f1;">${(getField(v, 'المعرف', 'id') || '').substring(0, 8)}</td>
             <td>${formatDate(getField(v, 'timestamp'))}</td>
             <td>${getField(v, 'اسم المفتش', 'inspector')}</td>
             <td>${getField(v, 'التخصص', 'specialty')}</td>
@@ -76,7 +73,6 @@ function renderTable(visits) {
         </tr>`).join('');
 }
 
-// تحميل البيانات وتطبيق الصلاحيات
 async function loadVisits() {
     const result = await fetchVisits();
     allVisits = result.data;
@@ -90,19 +86,20 @@ async function loadVisits() {
         filteredVisits = allVisits;
     }
     renderTable(filteredVisits);
+    if(document.getElementById('resultsCount')) 
+        document.getElementById('resultsCount').textContent = `${filteredVisits.length} نتيجة`;
 }
 
-// إرسال البيانات
 async function handleVisitSubmit(e) {
     if(e) e.preventDefault();
     const form = document.getElementById('visitForm');
-    const session = typeof getSession === 'function' ? getSession() : {name: 'Unknown'};
+    const session = typeof getSession === 'function' ? getSession() : {name: 'Admin'};
 
     const visitData = {
         'المعرف': 'VIS-' + Date.now(),
         'timestamp': new Date().toISOString(),
         'اسم المفتش': document.getElementById('inspectorSelect').value,
-        'التخصص': document.getElementById('specialty').value, // جلب التخصص التلقائي
+        'التخصص': document.getElementById('specialty').value, // القيمة المستخرجة تلقائياً
         'المرحلة': form.stage.value,
         'اسم المعني بالزيارة': form.visitee.value,
         'الرتبة': form.rank.value,
@@ -123,8 +120,10 @@ async function handleVisitSubmit(e) {
             mode: 'no-cors',
             body: JSON.stringify({ action: 'insert', sheet: 'visit', data: visitData })
         });
-        if (typeof showToast === 'function') showToast('✅ تم حفظ الزيارة');
+        if (typeof showToast === 'function') showToast('✅ تم الحفظ بنجاح');
         form.reset();
+        // إعادة تعيين الحقول التلقائية بعد المسح
+        document.getElementById('specialty').value = '';
         await loadVisits();
     } catch (err) { console.error(err); }
     if (typeof hideLoader === 'function') hideLoader();
@@ -134,4 +133,12 @@ function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
     return isNaN(d) ? val : d.toLocaleDateString('ar-DZ');
+}
+
+function applySearch() {
+    const nameQ = (document.getElementById('searchName')?.value || '').toLowerCase();
+    const res = filteredVisits.filter(v => 
+        (getField(v, 'اسم المعني بالزيارة', 'visitee') || '').toLowerCase().includes(nameQ)
+    );
+    renderTable(res);
 }
