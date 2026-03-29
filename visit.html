@@ -111,12 +111,12 @@
                             <option value="">-- اختر الرتبة --</option>
                             <option>أستاذ التعليم الابتدائي</option>
                             <option>أستاذ التعليم المتوسط</option>
-                            <option> أستاذ التعليم الثانوي</option>
-                            <option>مسير مالي </option>
+                            <option>أستاذ التعليم الثانوي</option>
+                            <option>مسير مالي</option>
                             <option>مدير</option>
                             <option>ناظر</option>
-                            <option>مشرف تربية </option>
-                             <option> مربي متخصص </option>
+                            <option>مشرف تربية</option>
+                            <option>مربي متخصص</option>
                         </select>
                     </div>
 
@@ -137,10 +137,10 @@
                         <label for="visitType">نوع الزيارة <span class="req">*</span></label>
                         <select id="visitType" name="visitType" required>
                             <option value="">-- اختر نوع الزيارة --</option>
-                            <option>زيارة تفتيشية </option>
+                            <option>زيارة تفتيشية</option>
                             <option>زيارة توجيهية</option>
                             <option>زيارة تثبيت</option>
-                            <option> تحقيق</option>
+                            <option>تحقيق</option>
                           </select>
                     </div>
 
@@ -169,24 +169,24 @@
                         <label for="penalties">العقوبات والاجازات <span class="req">*</span></label>
                         <select id="penalties" name="penalties" required>
                             <option value="">-- حدد المقترح --</option>
-                            <option>بدون إقتراح</option>
-                            <option>إقتراح تشجيع</option>
-                            <option>إقتراح إنذار</option>
-                            <option>إقتراح توبيخ</option>
-                            <option>إقتراح لجنة تحقيق</option>
-                            <option>إقراح الترسيم</option>
-                            <option>إقراح التأجيل</option>
+                            <option>بدون اقتراح</option>
+                            <option>اقتراح تشجيع</option>
+                            <option>اقتراح إنذار</option>
+                            <option>اقتراح توبيخ</option>
+                            <option>اقتراح لجنة تحقيق</option>
+                            <option>اقتراح الترسيم</option>
+                            <option>اقتراح التأجيل</option>
                         </select>
                     </div>
                     <!-- الملاحظة -->
                     <div class="form-group full-width">
-                        <label for="notes"> الملاحظة <span class="req">*</span></label>
+                        <label for="notes">الملاحظة <span class="req">*</span></label>
                         <select id="notes" name="notes" required>
                             <option value="">-- حدد نوع الملاحظة --</option>
-                            <option>العمل بالتوجيهات والنصائح المقدمة </option>
-                            <option>تثمين الجهد المبذول </option>
-                            <option>العمل على تدارك النقائص المسجلة </option>
-                            <option> تحويل التحقيق للوصاية لاتخاذ التدابير المناسبة</option>
+                            <option>العمل بالتوجيهات والنصائح المقدمة</option>
+                            <option>تثمين الجهد المبذول</option>
+                            <option>العمل على تدارك النقائص المسجلة</option>
+                            <option>تحويل التحقيق للوصاية لاتخاذ التدابير المناسبة</option>
                         </select>
                     </div>
 
@@ -264,12 +264,13 @@
                             <th>نوع الزيارة</th>
                             <th>النقطة</th>
                             <th>العقوبات</th>
+                            <th>الملاحظة</th>
                             <th>الموسم الدراسي</th>
                         </tr>
                     </thead>
                     <tbody id="visitsTableBody">
                         <tr>
-                            <td colspan="15" class="empty-state">
+                            <td colspan="16" class="empty-state">
                                 <span class="icon">⏳</span>جارٍ تحميل البيانات...
                             </td>
                         </tr>
@@ -284,303 +285,318 @@
     <script src="visit.js"></script>
     <script>
         console.log('[visit.html] inline script loaded');
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('[visit.html] DOM ready');
-            // ── Auth guard ──────────────────────────────────────────
-            const session = requireAuth(['admin', 'inspector', 'manager']);
-        if (!session) throw new Error('Not authenticated');
-
-        // Nav info
-        document.getElementById('navUserInfo').innerHTML =
-            `مرحباً <strong>${session.name}</strong> &nbsp;|&nbsp; <span class="badge ${roleBadgeClass(session.role)}">${roleLabel(session.role)}</span>`;
-
-        if (session.role === 'admin') {
-            document.getElementById('adminLink').style.display = 'inline-flex';
-        }
-
-        // For inspectors, pre-fill and disable inspector select
-        if (session.role === 'inspector') {
-            const inspectorSelect = document.getElementById('inspectorSelect');
-            if (inspectorSelect) {
-                inspectorSelect.innerHTML = `<option value="${session.name}">${session.name}</option>`;
-                inspectorSelect.value = session.name;
-                inspectorSelect.disabled = true;
-            }
-        }
-
-        // Pre-fill today's date
-        const today = new Date().toISOString().split('T')[0];
-        const visitDateEl = document.getElementById('visitDate');
-        if (visitDateEl) visitDateEl.value = today;
-
-        // Populate specialty select
-        const specSel = document.getElementById('specialty');
-        SPECIALTIES.forEach(s => {
-            const opt = document.createElement('option');
-            opt.textContent = s;
-            specSel.appendChild(opt);
-        });
-
-        // ── Fixed Municipalities List ──────────────────────────────────
-        const MUNICIPALITIES = [
-            'توقرت',
-            'النزلة',
-            'تبسبست',
-            'الزاوية العابدية',
-            'تماسين',
-            'بلدة عمر',
-            'المنقر',
-            'الطيبات',
-            'بن ناصر',
-            'المقارين',
-            'سيدي سليمان',
-            'الحجيرة',
-            'العالية'
-        ];
-
-        // ── Load inspectors & institutions into form ────────────
-        let _inspectorsList = [];
-        let _institutionsList = [];
-        let _municipalitiesList = [];
-
-        async function initFormDropdowns() {
-            // show a message if loading takes too long
-            const slowTimer = setTimeout(() => {
-                document.getElementById('formLoadingMsg').textContent =
-                    'جارٍ تحميل بيانات المفتشين والمؤسسات... (قد يستغرق وقتاً أطول)';
-            }, 5000);
-
-            let inspectors = [];
-            let institutions = [];
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                [inspectors, institutions] = await Promise.all([
-                    fetchInspectors(),
-                    fetchInstitutions()
-                ]);
-                console.log('[visit.html] Fetched inspectors:', inspectors);
-                console.log('[visit.html] Inspectors count:', inspectors.length);
-                if (inspectors.length > 0) {
-                    console.log('[visit.html] First inspector keys:', Object.keys(inspectors[0]));
-                    console.log('[visit.html] First inspector data:', inspectors[0]);
+                console.log('[visit.html] DOM ready');
+                // ── Auth guard ──────────────────────────────────────────
+                const session = requireAuth(['admin', 'inspector', 'manager']);
+                if (!session) throw new Error('Not authenticated');
+
+                // Nav info
+                document.getElementById('navUserInfo').innerHTML =
+                    `مرحباً <strong>${session.name}</strong> &nbsp;|&nbsp; <span class="badge ${roleBadgeClass(session.role)}">${roleLabel(session.role)}</span>`;
+
+                if (session.role === 'admin') {
+                    document.getElementById('adminLink').style.display = 'inline-flex';
                 }
-            } catch (err) {
-                console.error('[visit.html] initFormDropdowns error:', err);
-            } finally {
-                clearTimeout(slowTimer);
-            }
 
-            _inspectorsList = inspectors;
-            _institutionsList = institutions;
-            _municipalitiesList = MUNICIPALITIES; // Use fixed list
-
-            // Populate municipalities select
-            const munSel = document.getElementById('municipalitySelect');
-            munSel.innerHTML = '<option value="">-- اختر البلدية --</option>';
-            _municipalitiesList.forEach(mun => {
-                const opt = document.createElement('option');
-                opt.value = mun;
-                opt.textContent = mun;
-                munSel.appendChild(opt);
-            });
-
-            // show errors if we couldn't load required data
-            if (!_inspectorsList.length || !_institutionsList.length) {
-                showToast('تعذّر تحميل بعض البيانات، يُرجى التحقق من الاتصال أو إعادة المحاولة', 'error', 6000);
-            }
-
-            // If inspector role → pre-fill stage, specialty & disable fields
-            if (session.role === 'inspector') {
-                const inspectorData = inspectors.find(ins => ins['الاسم'] === session.name);
-                if (inspectorData) {
-                    const stage = inspectorData['المرحلة'];
-                    const specialty = inspectorData['التخصص'];
-                    if (stage) {
-                        document.getElementById('stageSelect').value = stage;
-                        document.getElementById('stageSelect').disabled = true;
-                    }
-                    if (specialty) {
-                        const specialtySelect = document.getElementById('specialty');
-                        specialtySelect.innerHTML = `<option value="${specialty}">${specialty}</option>`;
-                        specialtySelect.value = specialty;
-                        specialtySelect.disabled = true;
+                // For inspectors, pre-fill and disable inspector select
+                if (session.role === 'inspector') {
+                    const inspectorSelect = document.getElementById('inspectorSelect');
+                    if (inspectorSelect) {
+                        inspectorSelect.innerHTML = `<option value="${session.name}">${session.name}</option>`;
+                        inspectorSelect.value = session.name;
+                        inspectorSelect.disabled = true;
                     }
                 }
-            }
 
-            // Hide loading, show form
-            document.getElementById('formLoadingMsg').style.display = 'none';
-            document.getElementById('visitForm').style.display = '';
-        }
+                // Pre-fill today's date
+                const today = new Date().toISOString().split('T')[0];
+                const visitDateEl = document.getElementById('visitDate');
+                if (visitDateEl) visitDateEl.value = today;
 
-        // ── Handle stage selection ──────────────────────────────
-        document.getElementById('stageSelect').addEventListener('change', function() {
-            const selectedStage = this.value;
-            const inspectorSelect = document.getElementById('inspectorSelect');
-            const specialtySelect = document.getElementById('specialty');
+                // Populate specialty select
+                const specSel = document.getElementById('specialty');
+                SPECIALTIES.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.textContent = s;
+                    specSel.appendChild(opt);
+                });
 
-            if (!selectedStage) {
-                // Reset inspectors
-                inspectorSelect.innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
-                inspectorSelect.disabled = true;
-                specialtySelect.innerHTML = '<option value="">-- سيظهر تلقائياً --</option>';
-                specialtySelect.disabled = true;
-                return;
-            }
+                // ── Fixed Municipalities List ──────────────────────────────────
+                const MUNICIPALITIES = [
+                    'توقرت',
+                    'النزلة',
+                    'تبسبست',
+                    'الزاوية العابدية',
+                    'تماسين',
+                    'بلدة عمر',
+                    'المنقر',
+                    'الطيبات',
+                    'بن ناصر',
+                    'المقارين',
+                    'سيدي سليمان',
+                    'الحجيرة',
+                    'العالية'
+                ];
 
-            // Filter inspectors by selected stage
-            const filteredInspectors = filterInspectorsByLevel(_inspectorsList, selectedStage);
-            console.log('[visit.html] Stage selected:', selectedStage);
-            console.log('[visit.html] Filtered inspectors:', filteredInspectors);
+                // ── Load inspectors & institutions into form ────────────
+                let _inspectorsList = [];
+                let _institutionsList = [];
+                let _municipalitiesList = [];
 
-            // Populate inspectors select
-            inspectorSelect.innerHTML = '<option value="">-- اختر المفتش --</option>';
-            filteredInspectors.forEach(ins => {
-                const nameValue = ins['الاسم'] || '';
-                console.log('[visit.html] Adding inspector option:', nameValue, 'from data:', ins);
-                const opt = document.createElement('option');
-                opt.value = nameValue;
-                opt.textContent = nameValue || '—';
-                opt.dataset.specialty = ins['التخصص'] || '';
-                inspectorSelect.appendChild(opt);
-            });
+                async function initFormDropdowns() {
+                    // show a message if loading takes too long
+                    const slowTimer = setTimeout(() => {
+                        document.getElementById('formLoadingMsg').textContent =
+                            'جارٍ تحميل بيانات المفتشين والمؤسسات... (قد يستغرق وقتاً أطول)';
+                    }, 5000);
 
-            inspectorSelect.disabled = false;
+                    let inspectors = [];
+                    let institutions = [];
+                    try {
+                        [inspectors, institutions] = await Promise.all([
+                            fetchInspectors(),
+                            fetchInstitutions()
+                        ]);
+                        console.log('[visit.html] Fetched inspectors:', inspectors);
+                        console.log('[visit.html] Inspectors count:', inspectors.length);
+                        if (inspectors.length > 0) {
+                            console.log('[visit.html] First inspector keys:', Object.keys(inspectors[0]));
+                            console.log('[visit.html] First inspector data:', inspectors[0]);
+                        }
+                    } catch (err) {
+                        console.error('[visit.html] initFormDropdowns error:', err);
+                        showToast('خطأ في تحميل البيانات', 'error', 6000);
+                    } finally {
+                        clearTimeout(slowTimer);
+                    }
 
-            // If inspector role and only one option, auto-select
-            if (session.role === 'inspector' && filteredInspectors.length === 1) {
-                inspectorSelect.value = filteredInspectors[0]['الاسم'];
-                inspectorSelect.dispatchEvent(new Event('change'));
-            }
-        });
+                    _inspectorsList = inspectors;
+                    _institutionsList = institutions;
+                    _municipalitiesList = MUNICIPALITIES;
 
-        // ── Handle inspector selection ──────────────────────────
-        document.getElementById('inspectorSelect').addEventListener('change', function() {
-            const selectedInspector = this.value;
-            const specialtySelect = document.getElementById('specialty');
+                    // Populate municipalities select
+                    const munSel = document.getElementById('municipalitySelect');
+                    munSel.innerHTML = '<option value="">-- اختر البلدية --</option>';
+                    _municipalitiesList.forEach(mun => {
+                        const opt = document.createElement('option');
+                        opt.value = mun;
+                        opt.textContent = mun;
+                        munSel.appendChild(opt);
+                    });
 
-            if (!selectedInspector) {
-                specialtySelect.innerHTML = '<option value="">-- سيظهر تلقائياً --</option>';
-                specialtySelect.disabled = true;
-                return;
-            }
+                    // show errors if we couldn't load required data
+                    if (!_inspectorsList.length || !_institutionsList.length) {
+                        showToast('تعذّر تحميل بعض البيانات، يُرجى التحقق من الاتصال أو إعادة المحاولة', 'error', 6000);
+                    }
 
-            // Find selected inspector data
-            const inspectorData = _inspectorsList.find(ins => ins['الاسم'] === selectedInspector);
-            if (inspectorData) {
-                const specialty = inspectorData['التخصص'] || '';
-                specialtySelect.innerHTML = `<option value="${specialty}">${specialty}</option>`;
-                specialtySelect.value = specialty;
-                specialtySelect.disabled = false;
-            }
-        });
-
-        // ── Handle municipality and stage change for institutions ─
-        function updateInstitutionsSelect() {
-            const selectedStage = document.getElementById('stageSelect').value;
-            const selectedMunicipality = document.getElementById('municipalitySelect').value;
-            const institutionSelect = document.getElementById('institutionSelect');
-
-            if (!selectedStage || !selectedMunicipality) {
-                institutionSelect.innerHTML = '<option value="">-- اختر المرحلة والبلدية أولاً --</option>';
-                institutionSelect.disabled = true;
-                return;
-            }
-
-            // Filter institutions by stage and municipality
-            const filteredInstitutions = filterInstitutionsByLevelAndMunicipality(
-                _institutionsList, selectedStage, selectedMunicipality
-            );
-
-            // Populate institutions select
-            institutionSelect.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
-            filteredInstitutions.forEach(inst => {
-                const opt = document.createElement('option');
-                const name = inst['اسم المؤسسة'] || '';
-                opt.value = name;
-                opt.textContent = name;
-                institutionSelect.appendChild(opt);
-            });
-
-            institutionSelect.disabled = false;
-        }
-
-        document.getElementById('stageSelect').addEventListener('change', updateInstitutionsSelect);
-        document.getElementById('municipalitySelect').addEventListener('change', updateInstitutionsSelect);
-
-        // ── Visit Form Submit ───────────────────────────────────
-        document.getElementById('visitForm').addEventListener('submit', async (e) => {
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span>⏳</span> جارٍ الإرسال...';
-
-            await handleVisitSubmit(e);
-
-            btn.disabled = false;
-            btn.innerHTML = '<span>📤</span> إرسال الزيارة';
-
-            if (session.role === 'inspector') {
-                const inspSel = document.getElementById('inspectorSelect');
-                if (inspSel) {
-                    const found = [...inspSel.options].find(o =>
-                        o.value.trim() === session.name.trim()
-                    );
-                    if (found) inspSel.value = found.value;
-                }
-            }
-            const visitDateEl = document.getElementById('visitDate');
-            if (visitDateEl) visitDateEl.value = today;
-        });
-
-        // ── Refresh Button ──────────────────────────────────────
-        document.getElementById('refreshBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('refreshBtn');
-            btn.textContent = '⏳';
-            await loadVisits();
-            btn.textContent = '🔄 تحديث';
-        });
-
-        // ── Initialize form dropdowns ───────────────────────────
-        initFormDropdowns();
-
-        // ── Dynamic Search ──────────────────────────────────────
-        ['searchName', 'searchInst', 'searchInspector'].forEach(id => {
-            document.getElementById(id)?.addEventListener('input', applySearch);
-        });
-
-        function clearSearch() {
-            ['searchName', 'searchInst', 'searchInspector'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            applySearch();
-        }
-
-        // ── Reset Button ────────────────────────────────────────
-        const resetBtn = document.getElementById('resetBtn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                setTimeout(() => {
+                    // If inspector role → pre-fill stage, specialty & disable fields
                     if (session.role === 'inspector') {
-                        const inspSel = document.getElementById('inspectorSelect');
-                        if (inspSel) {
-                            const found = [...inspSel.options].find(o =>
-                                o.value.trim() === session.name.trim()
-                            );
-                            if (found) inspSel.value = found.value;
+                        const inspectorData = inspectors.find(ins => ins['الاسم'] === session.name);
+                        if (inspectorData) {
+                            const stage = inspectorData['المرحلة'];
+                            const specialty = inspectorData['التخصص'];
+                            if (stage) {
+                                document.getElementById('stageSelect').value = stage;
+                                document.getElementById('stageSelect').disabled = true;
+                            }
+                            if (specialty) {
+                                const specialtySelect = document.getElementById('specialty');
+                                specialtySelect.innerHTML = `<option value="${specialty}">${specialty}</option>`;
+                                specialtySelect.value = specialty;
+                                specialtySelect.disabled = true;
+                            }
                         }
                     }
-                    const visitDateEl = document.getElementById('visitDate');
-                    if (visitDateEl) visitDateEl.value = today;
-                }, 50);
-            });
-        }
 
-        // ── Init ────────────────────────────────────────────────
-        initFormDropdowns();
-        loadVisits();
+                    // Hide loading, show form
+                    document.getElementById('formLoadingMsg').style.display = 'none';
+                    document.getElementById('visitForm').style.display = '';
+                }
+
+                // ── Handle stage selection ──────────────────────────────
+                document.getElementById('stageSelect').addEventListener('change', function() {
+                    const selectedStage = this.value;
+                    const inspectorSelect = document.getElementById('inspectorSelect');
+                    const specialtySelect = document.getElementById('specialty');
+
+                    if (!selectedStage) {
+                        // Reset inspectors
+                        inspectorSelect.innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
+                        inspectorSelect.disabled = true;
+                        specialtySelect.innerHTML = '<option value="">-- سيظهر تلقائياً --</option>';
+                        specialtySelect.disabled = true;
+                        return;
+                    }
+
+                    // Filter inspectors by selected stage
+                    const filteredInspectors = filterInspectorsByLevel(_inspectorsList, selectedStage);
+                    console.log('[visit.html] Stage selected:', selectedStage);
+                    console.log('[visit.html] Filtered inspectors:', filteredInspectors);
+
+                    // Populate inspectors select
+                    inspectorSelect.innerHTML = '<option value="">-- اختر المفتش --</option>';
+                    filteredInspectors.forEach(ins => {
+                        const nameValue = ins['الاسم'] || '';
+                        console.log('[visit.html] Adding inspector option:', nameValue, 'from data:', ins);
+                        const opt = document.createElement('option');
+                        opt.value = nameValue;
+                        opt.textContent = nameValue || '—';
+                        opt.dataset.specialty = ins['التخصص'] || '';
+                        inspectorSelect.appendChild(opt);
+                    });
+
+                    inspectorSelect.disabled = false;
+
+                    // If inspector role and only one option, auto-select
+                    if (session.role === 'inspector' && filteredInspectors.length === 1) {
+                        inspectorSelect.value = filteredInspectors[0]['الاسم'];
+                        inspectorSelect.dispatchEvent(new Event('change'));
+                    }
+                });
+
+                // ── Handle inspector selection ──────────────────────────
+                document.getElementById('inspectorSelect').addEventListener('change', function() {
+                    const selectedInspector = this.value;
+                    const specialtySelect = document.getElementById('specialty');
+
+                    if (!selectedInspector) {
+                        specialtySelect.innerHTML = '<option value="">-- سيظهر تلقائياً --</option>';
+                        specialtySelect.disabled = true;
+                        return;
+                    }
+
+                    // Find selected inspector data
+                    const inspectorData = _inspectorsList.find(ins => ins['الاسم'] === selectedInspector);
+                    if (inspectorData) {
+                        const specialty = inspectorData['التخصص'] || '';
+                        specialtySelect.innerHTML = `<option value="${specialty}">${specialty}</option>`;
+                        specialtySelect.value = specialty;
+                        specialtySelect.disabled = false;
+                    }
+                });
+
+                // ── Handle municipality and stage change for institutions ─
+                function updateInstitutionsSelect() {
+                    const selectedStage = document.getElementById('stageSelect').value;
+                    const selectedMunicipality = document.getElementById('municipalitySelect').value;
+                    const institutionSelect = document.getElementById('institutionSelect');
+
+                    if (!selectedStage || !selectedMunicipality) {
+                        institutionSelect.innerHTML = '<option value="">-- اختر المرحلة والبلدية أولاً --</option>';
+                        institutionSelect.disabled = true;
+                        return;
+                    }
+
+                    // Filter institutions by stage and municipality
+                    const filteredInstitutions = filterInstitutionsByLevelAndMunicipality(
+                        _institutionsList, selectedStage, selectedMunicipality
+                    );
+
+                    // Populate institutions select
+                    institutionSelect.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
+                    filteredInstitutions.forEach(inst => {
+                        const opt = document.createElement('option');
+                        const name = inst['اسم المؤسسة'] || '';
+                        opt.value = name;
+                        opt.textContent = name;
+                        institutionSelect.appendChild(opt);
+                    });
+
+                    institutionSelect.disabled = false;
+                }
+
+                document.getElementById('stageSelect').addEventListener('change', updateInstitutionsSelect);
+                document.getElementById('municipalitySelect').addEventListener('change', updateInstitutionsSelect);
+
+                // ── Visit Form Submit ───────────────────────────────────
+                document.getElementById('visitForm').addEventListener('submit', async (e) => {
+                    const btn = document.getElementById('submitBtn');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span>⏳</span> جارٍ الإرسال...';
+
+                    try {
+                        await handleVisitSubmit(e);
+                    } catch (err) {
+                        console.error('[visit.html] Form submission error:', err);
+                        showToast('حدث خطأ في إرسال النموذج', 'error', 6000);
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '<span>📤</span> إرسال الزيارة';
+
+                        if (session.role === 'inspector') {
+                            const inspSel = document.getElementById('inspectorSelect');
+                            if (inspSel) {
+                                const found = [...inspSel.options].find(o =>
+                                    o.value.trim() === session.name.trim()
+                                );
+                                if (found) inspSel.value = found.value;
+                            }
+                        }
+                        const visitDateEl = document.getElementById('visitDate');
+                        if (visitDateEl) visitDateEl.value = today;
+                    }
+                });
+
+                // ── Refresh Button ──────────────────────────────────────
+                document.getElementById('refreshBtn').addEventListener('click', async () => {
+                    const btn = document.getElementById('refreshBtn');
+                    btn.textContent = '⏳';
+                    try {
+                        await loadVisits();
+                    } catch (err) {
+                        console.error('[visit.html] Refresh error:', err);
+                        showToast('خطأ في تحديث البيانات', 'error', 6000);
+                    } finally {
+                        btn.textContent = '🔄 تحديث';
+                    }
+                });
+
+                // ── Dynamic Search ──────────────────────────────────────
+                ['searchName', 'searchInst', 'searchInspector'].forEach(id => {
+                    document.getElementById(id)?.addEventListener('input', applySearch);
+                });
+
+                function clearSearch() {
+                    ['searchName', 'searchInst', 'searchInspector'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                    applySearch();
+                }
+
+                // ── Reset Button ────────────────────────────────────────
+                const resetBtn = document.getElementById('resetBtn');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        setTimeout(() => {
+                            if (session.role === 'inspector') {
+                                const inspSel = document.getElementById('inspectorSelect');
+                                if (inspSel) {
+                                    const found = [...inspSel.options].find(o =>
+                                        o.value.trim() === session.name.trim()
+                                    );
+                                    if (found) inspSel.value = found.value;
+                                }
+                            }
+                            const visitDateEl = document.getElementById('visitDate');
+                            if (visitDateEl) visitDateEl.value = today;
+                        }, 50);
+                    });
+                }
+
+                // ── Initialize ──────────────────────────────────────────
+                await initFormDropdowns();
+                await loadVisits();
+
+            } catch (err) {
+                console.error('[visit.html] Initialization error:', err);
+                showToast('خطأ في تحميل الصفحة', 'error', 6000);
+            }
         }); // end DOMContentLoaded
     </script>
-</body>
 
+</body>
 
 </html>
