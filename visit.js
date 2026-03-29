@@ -1,5 +1,5 @@
 /**
- * نظام إدارة الزيارات التفتيشية - نسخة مستقرة v6
+ * نظام إدارة الزيارات التفتيشية - نسخة مستقرة v7
  * المطور: سعداوي زين العابدين
  */
 
@@ -12,7 +12,7 @@ const FIELD_NAMES = [
 
 let allVisits = [];
 let filteredVisits = [];
-let _inspectorsList = []; // لتخزين بيانات المفتشين محلياً للتخصص التلقائي
+let _inspectorsList = []; 
 
 function normalizeKey(str) {
     return String(str || '').trim().replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
@@ -42,7 +42,6 @@ async function fetchVisits() {
     }
 }
 
-// عرض الجدول مع عمود الملاحظة
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
@@ -86,20 +85,16 @@ async function loadVisits() {
         filteredVisits = allVisits;
     }
     renderTable(filteredVisits);
-    if(document.getElementById('resultsCount')) 
-        document.getElementById('resultsCount').textContent = `${filteredVisits.length} نتيجة`;
 }
 
 async function handleVisitSubmit(e) {
     if(e) e.preventDefault();
     const form = document.getElementById('visitForm');
-    const session = typeof getSession === 'function' ? getSession() : {name: 'Admin'};
-
     const visitData = {
         'المعرف': 'VIS-' + Date.now(),
         'timestamp': new Date().toISOString(),
         'اسم المفتش': document.getElementById('inspectorSelect').value,
-        'التخصص': document.getElementById('specialty').value, // القيمة المستخرجة تلقائياً
+        'التخصص': document.getElementById('specialty').value,
         'المرحلة': form.stage.value,
         'اسم المعني بالزيارة': form.visitee.value,
         'الرتبة': form.rank.value,
@@ -122,8 +117,6 @@ async function handleVisitSubmit(e) {
         });
         if (typeof showToast === 'function') showToast('✅ تم الحفظ بنجاح');
         form.reset();
-        // إعادة تعيين الحقول التلقائية بعد المسح
-        document.getElementById('specialty').value = '';
         await loadVisits();
     } catch (err) { console.error(err); }
     if (typeof hideLoader === 'function') hideLoader();

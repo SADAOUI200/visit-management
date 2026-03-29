@@ -8,7 +8,6 @@
     <style>
         .note-cell { white-space: normal !important; min-width: 250px; max-width: 400px; font-size: 0.85rem; color: #4b5563; line-height: 1.5; }
         .table-wrap { overflow-x: auto; margin-top: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; }
-        #visitsTable th { background-color: #f9fafb; color: #374151; font-weight: 600; }
         #specialty[readonly] { background-color: #f3f4f6; cursor: not-allowed; border-color: #d1d5db; }
     </style>
 </head>
@@ -99,10 +98,7 @@
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">🔍 سجل الزيارات <span id="resultsCount" style="font-size: 0.9rem; font-weight: normal;"></span></div>
-            <div class="search-bar">
-                <input type="text" id="searchName" placeholder="بحث باسم المعني..." />
-            </div>
+            <div class="card-title">🔍 سجل الزيارات <span id="resultsCount"></span></div>
             <div class="table-wrap">
                 <table id="visitsTable">
                     <thead>
@@ -121,6 +117,7 @@
     <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof requireAuth !== 'function') return;
             const session = requireAuth(['admin', 'inspector', 'manager']);
             if (!session) return;
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
@@ -128,58 +125,68 @@
 
             const MUNICIPALITIES = ['توقرت', 'النزلة', 'تبسبست', 'الزاوية العابدية', 'تماسين', 'بلدة عمر', 'المنقر', 'الطيبات', 'بن ناصر', 'المقارين', 'سيدي سليمان', 'الحجيرة', 'العالية'];
             
-            // تهيئة البلديات
             const munSel = document.getElementById('municipalitySelect');
             MUNICIPALITIES.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m; opt.textContent = m;
+                const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
                 munSel.appendChild(opt);
             });
 
-            // جلب البيانات الأساسية
+            // جلب البيانات
             const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
             _inspectorsList = inspectors;
 
-            // 1. منطق تغيير المرحلة (يفلتر المفتشين والمؤسسات)
-            document.getElementById('stageSelect').addEventListener('change', function() {
-                const stage = this.value;
-                const insSel = document.getElementById('inspectorSelect');
+            const stageSel = document.getElementById('stageSelect');
+            const insSel = document.getElementById('inspectorSelect');
+            const instSel = document.getElementById('institutionSelect');
+
+            // دالة تحديث المؤسسات (تم تحسينها لتكون أكثر مرونة)
+            function updateInstitutions() {
+                const stage = stageSel.value;
+                const municipality = munSel.value;
                 
-                const filteredIns = inspectors.filter(i => i['المرحلة'] === stage);
-                insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
-                filteredIns.forEach(i => {
-                    const opt = document.createElement('option'); opt.value = i['الاسم']; opt.textContent = i['الاسم'];
-                    insSel.appendChild(opt);
+                if (!stage || !municipality) {
+                    instSel.disabled = true;
+                    instSel.innerHTML = '<option value="">-- اختر البلدية والمرحلة --</option>';
+                    return;
+                }
+
+                // نستخدم getField لضمان الحصول على القيم حتى لو اختلف مسمى العمود في شيت المؤسسات
+                const filtered = institutions.filter(i => {
+                    const iStage = getField(i, 'المرحلة', 'الطور');
+                    const iMun = getField(i, 'البلدية');
+                    return normalizeKey(iStage) === normalizeKey(stage) && normalizeKey(iMun) === normalizeKey(municipality);
                 });
-                insSel.disabled = false;
-                updateInstitutions(stage, munSel.value, institutions);
-            });
 
-            // 2. منطق التخصص التلقائي (عند اختيار المفتش)
-            document.getElementById('inspectorSelect').addEventListener('change', function() {
-                const insData = _inspectorsList.find(i => i['الاسم'] === this.value);
-                document.getElementById('specialty').value = insData ? insData['التخصص'] : '';
-            });
-
-            // 3. منطق تغيير البلدية
-            munSel.addEventListener('change', () => {
-                updateInstitutions(document.getElementById('stageSelect').value, munSel.value, institutions);
-            });
-
-            function updateInstitutions(stage, municipality, list) {
-                const instSel = document.getElementById('institutionSelect');
-                if (!stage || !municipality) return;
-                const filtered = list.filter(i => i['المرحلة'] === stage && i['البلدية'] === municipality);
-                instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
+                instSel.innerHTML = '<option value="">-- اختر المؤسسة (${filtered.length}) --</option>';
                 filtered.forEach(i => {
-                    const opt = document.createElement('option'); opt.value = i['اسم المؤسسة']; opt.textContent = i['اسم المؤسسة'];
+                    const name = getField(i, 'اسم المؤسسة', 'المؤسسة');
+                    const opt = document.createElement('option');
+                    opt.value = name; opt.textContent = name;
                     instSel.appendChild(opt);
                 });
                 instSel.disabled = false;
             }
 
+            stageSel.addEventListener('change', () => {
+                const filteredIns = inspectors.filter(i => normalizeKey(getField(i, 'المرحلة')) === normalizeKey(stageSel.value));
+                insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
+                filteredIns.forEach(i => {
+                    const name = getField(i, 'الاسم');
+                    const opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+                    insSel.appendChild(opt);
+                });
+                insSel.disabled = false;
+                updateInstitutions();
+            });
+
+            insSel.addEventListener('change', () => {
+                const insData = _inspectorsList.find(i => getField(i, 'الاسم') === insSel.value);
+                document.getElementById('specialty').value = insData ? getField(insData, 'التخصص') : '';
+            });
+
+            munSel.addEventListener('change', updateInstitutions);
+
             document.getElementById('visitForm').addEventListener('submit', handleVisitSubmit);
-            document.getElementById('searchName').addEventListener('input', applySearch);
             await loadVisits();
         });
     </script>
