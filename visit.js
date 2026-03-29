@@ -42,7 +42,7 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-// ── جلب البيانات من السكريبت ──────────────────────────────────
+// ── جلب زيارات المفتشين ────────────────────────────────────────
 async function fetchVisits() {
     if (typeof showLoader === 'function') showLoader();
     try {
@@ -51,20 +51,22 @@ async function fetchVisits() {
         const raw = await res.json();
         let data = Array.isArray(raw) ? raw : (raw.data || []);
         if (data.length > 0) columnMapping = buildMapping(data[0]);
-        if (typeof hideLoader === 'function') hideLoader();
         return { ok: true, data };
     } catch (err) {
-        if (typeof hideLoader === 'function') hideLoader();
+        console.error("Error fetching visits:", err);
         return { ok: false, data: [] };
+    } finally {
+        if (typeof hideLoader === 'function') hideLoader();
     }
 }
 
+// ── عرض الجدول مع نظام الترقيم ──────────────────────────────────
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات حالياً</td></tr>';
         updatePaginationControls(0);
         return;
     }
@@ -103,7 +105,7 @@ function updatePaginationControls(total) {
     container.innerHTML = `
         <button class="btn btn-sm" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>⏮️ الأولى</button>
         <button class="btn btn-sm" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>السابق</button>
-        <span style="margin: 0 10px;">صفحة ${currentPage} من ${totalPages || 1}</span>
+        <span style="margin: 0 10px; font-weight: bold;">صفحة ${currentPage} من ${totalPages || 1}</span>
         <button class="btn btn-sm" onclick="changePage(1)" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>التالي</button>
         <button class="btn btn-sm" onclick="goToPage(${totalPages})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>الأخيرة ⏭️</button>
     `;
@@ -115,7 +117,7 @@ function goToPage(p) { currentPage = p; renderTable(filteredVisits); }
 async function loadVisits() {
     const result = await fetchVisits();
     allVisits = result.data;
-    applySearch(); // لتطبيق الفلترة الأولية حسب الصلاحيات
+    applySearch(); 
 }
 
 function applySearch() {
