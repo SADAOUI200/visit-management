@@ -110,9 +110,15 @@ async function loadVisits() {
 
 // ── Search/Filter Visits ─────────────────────────────────────
 function applySearch() {
-    const searchName = document.getElementById('searchName')?.value?.toLowerCase() || '';
-    const searchInst = document.getElementById('searchInst')?.value?.toLowerCase() || '';
-    const searchInspector = document.getElementById('searchInspector')?.value?.toLowerCase() || '';
+    // ✅ جديد - مع دعم أفضل
+const searchName = document.getElementById('searchName')?.value?.toLowerCase() || '';
+const searchInst = document.getElementById('searchInst')?.value?.toLowerCase() || '';
+const searchInspector = document.getElementById('searchInspector')?.value?.toLowerCase() || '';
+
+// إضافة معالجة خطأ
+if (!document.getElementById('visitsTableBody')) {
+    console.error('❌ خطأ: عنصر الجدول غير موجود');
+}';
 
     const filtered = _allVisits.filter(v => {
         const name = (v['اسم المعني بالزيارة'] || '').toLowerCase();
