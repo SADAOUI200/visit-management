@@ -1,34 +1,41 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>نظام إدارة الزيارات - سعداوي زين العابدين</title>
+    <title>الزيارات التفتيشية – نظام إدارة الزيارات</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        .note-cell { white-space: normal !important; min-width: 250px; max-width: 400px; font-size: 0.85rem; color: #4b5563; line-height: 1.5; }
-        .table-wrap { overflow-x: auto; margin-top: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; }
-        #specialty[readonly] { background-color: #f3f4f6; cursor: not-allowed; border-color: #d1d5db; }
+        .note-cell { white-space: normal !important; min-width: 200px; max-width: 350px; font-size: 0.85rem; color: #4b5563; }
+        .table-wrap { overflow-x: auto; }
+        #specialty { background-color: #f3f4f6; }
     </style>
 </head>
+
 <body>
     <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
 
     <nav class="navbar">
-        <div class="brand">🏫 نظام إدارة الزيارات التفتيشية</div>
+        <div class="brand"><span>🏫</span> نظام إدارة الزيارات التفتيشية</div>
         <div class="nav-links">
-            <span id="navUserInfo"></span>
-            <button class="btn btn-danger btn-sm" onclick="logout()">خروج</button>
+            <span class="user-info" id="navUserInfo"></span>
+            <button class="btn btn-sm" id="refreshBtn">🔄 تحديث</button>
+            <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
         </div>
     </nav>
 
     <div class="container">
         <div class="card fade-in">
-            <div class="card-title">✏️ تسجيل زيارة جديدة</div>
-            <form id="visitForm">
+            <div class="card-title">✏️ إدخال زيارة تفتيشية جديدة</div>
+            <div id="formLoadingMsg" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                <span>جارٍ تحميل البيانات...</span>
+            </div>
+
+            <form id="visitForm" novalidate style="display:none;">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>المرحلة التعليمية</label>
+                        <label>المرحلة التعليمية <span class="req">*</span></label>
                         <select id="stageSelect" name="stage" required>
                             <option value="">-- اختر المرحلة --</option>
                             <option value="ابتدائي">ابتدائي</option>
@@ -38,7 +45,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>اسم المفتش</label>
+                        <label>اسم المفتش <span class="req">*</span></label>
                         <select id="inspectorSelect" name="inspector" required disabled>
                             <option value="">-- اختر المرحلة أولاً --</option>
                         </select>
@@ -50,62 +57,63 @@
                     </div>
 
                     <div class="form-group">
-                        <label>البلدية</label>
+                        <label>البلدية <span class="req">*</span></label>
                         <select id="municipalitySelect" name="municipality" required>
                             <option value="">-- اختر البلدية --</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>المؤسسة التعليمية</label>
+                        <label>المؤسسة التعليمية <span class="req">*</span></label>
                         <select id="institutionSelect" name="institution" required disabled>
-                            <option value="">-- اختر البلدية والمرحلة --</option>
+                            <option value="">-- اختر المرحلة والبلدية أولاً --</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>اسم المعني بالزيارة</label>
-                        <input type="text" name="visitee" required placeholder="اسم الأستاذ" />
+                        <label>اسم المعني بالزيارة <span class="req">*</span></label>
+                        <input type="text" name="visitee" required />
                     </div>
 
                     <div class="form-group">
-                        <label>تاريخ الزيارة</label>
-                        <input type="date" name="visitDate" required id="defaultDate" />
+                        <label>تاريخ الزيارة <span class="req">*</span></label>
+                        <input type="date" id="visitDate" name="visitDate" required />
                     </div>
 
                     <div class="form-group">
-                        <label>النقطة /20</label>
-                        <input type="number" name="score" step="0.25" max="20" placeholder="00.00" />
+                        <label>النقطة (من 20)</label>
+                        <input type="number" name="score" step="0.25" max="20" />
                     </div>
 
                     <div class="form-group">
-                        <label>الموسم الدراسي</label>
+                        <label>الموسم الدراسي <span class="req">*</span></label>
                         <select name="season" required>
-                            <option>2024 / 2025</option>
-                            <option selected>2025 / 2026</option>
+                            <option value="2025 / 2026">2025 / 2026</option>
+                            <option value="2024 / 2025">2024 / 2025</option>
                         </select>
                     </div>
 
                     <div class="form-group full-width">
-                        <label>ملاحظات الزيارة</label>
-                        <textarea id="notes" name="notes" rows="2" placeholder="اكتب ملاحظاتك هنا..."></textarea>
+                        <label>الملاحظة</label>
+                        <textarea id="notes" name="notes"></textarea>
                     </div>
                 </div>
+
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-accent">📤 حفظ الزيارة</button>
+                    <button type="submit" class="btn btn-accent">📤 إرسال الزيارة</button>
                 </div>
             </form>
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">🔍 سجل الزيارات <span id="resultsCount"></span></div>
+            <div class="card-title"><span>🔍 البحث وعرض الزيارات</span> <span id="resultsCount">0 نتيجة</span></div>
             <div class="table-wrap">
                 <table id="visitsTable">
                     <thead>
                         <tr>
-                            <th>#</th><th>المعرف</th><th>التوقيت</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
+                            <th>#</th><th>المعرف</th><th>توقيت الإدخال</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
                             <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>تاريخ الزيارة</th>
-                            <th>النوع</th><th>النقطة</th><th>العقوبات</th><th>الموسم</th><th>الملاحظة</th>
+                            <th>نوع الزيارة</th><th>النقطة</th><th>العقوبات</th><th>الموسم</th><th>الملاحظة</th>
                         </tr>
                     </thead>
                     <tbody id="visitsTableBody"></tbody>
@@ -117,76 +125,78 @@
     <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            if (typeof requireAuth !== 'function') return;
             const session = requireAuth(['admin', 'inspector', 'manager']);
             if (!session) return;
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
-            document.getElementById('defaultDate').value = new Date().toISOString().split('T')[0];
 
             const MUNICIPALITIES = ['توقرت', 'النزلة', 'تبسبست', 'الزاوية العابدية', 'تماسين', 'بلدة عمر', 'المنقر', 'الطيبات', 'بن ناصر', 'المقارين', 'سيدي سليمان', 'الحجيرة', 'العالية'];
-            
-            const munSel = document.getElementById('municipalitySelect');
-            MUNICIPALITIES.forEach(m => {
-                const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
-                munSel.appendChild(opt);
-            });
-
-            // جلب البيانات
-            const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
-            _inspectorsList = inspectors;
+            let _inspectorsList = [];
+            let _institutionsList = [];
 
             const stageSel = document.getElementById('stageSelect');
             const insSel = document.getElementById('inspectorSelect');
+            const munSel = document.getElementById('municipalitySelect');
             const instSel = document.getElementById('institutionSelect');
+            const specInp = document.getElementById('specialty');
 
-            // دالة تحديث المؤسسات (تم تحسينها لتكون أكثر مرونة)
-            function updateInstitutions() {
-                const stage = stageSel.value;
-                const municipality = munSel.value;
-                
-                if (!stage || !municipality) {
-                    instSel.disabled = true;
-                    instSel.innerHTML = '<option value="">-- اختر البلدية والمرحلة --</option>';
-                    return;
-                }
+            // 1. تحميل القوائم
+            async function init() {
+                try {
+                    const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
+                    _inspectorsList = inspectors;
+                    _institutionsList = institutions;
 
-                // نستخدم getField لضمان الحصول على القيم حتى لو اختلف مسمى العمود في شيت المؤسسات
-                const filtered = institutions.filter(i => {
-                    const iStage = getField(i, 'المرحلة', 'الطور');
-                    const iMun = getField(i, 'البلدية');
-                    return normalizeKey(iStage) === normalizeKey(stage) && normalizeKey(iMun) === normalizeKey(municipality);
-                });
+                    munSel.innerHTML = '<option value="">-- اختر البلدية --</option>';
+                    MUNICIPALITIES.forEach(m => {
+                        const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
+                        munSel.appendChild(opt);
+                    });
 
-                instSel.innerHTML = '<option value="">-- اختر المؤسسة (${filtered.length}) --</option>';
-                filtered.forEach(i => {
-                    const name = getField(i, 'اسم المؤسسة', 'المؤسسة');
-                    const opt = document.createElement('option');
-                    opt.value = name; opt.textContent = name;
-                    instSel.appendChild(opt);
-                });
-                instSel.disabled = false;
+                    document.getElementById('formLoadingMsg').style.display = 'none';
+                    document.getElementById('visitForm').style.display = '';
+                } catch (e) { console.error(e); }
             }
 
+            // 2. فلترة المفتشين حسب المرحلة
             stageSel.addEventListener('change', () => {
-                const filteredIns = inspectors.filter(i => normalizeKey(getField(i, 'المرحلة')) === normalizeKey(stageSel.value));
+                const stage = stageSel.value;
+                const filtered = _inspectorsList.filter(i => i['المرحلة'] === stage);
                 insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
-                filteredIns.forEach(i => {
-                    const name = getField(i, 'الاسم');
-                    const opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+                filtered.forEach(i => {
+                    const opt = document.createElement('option'); opt.value = i['الاسم']; opt.textContent = i['الاسم'];
                     insSel.appendChild(opt);
                 });
                 insSel.disabled = false;
                 updateInstitutions();
             });
 
+            // 3. التخصص التلقائي عند اختيار المفتش
             insSel.addEventListener('change', () => {
-                const insData = _inspectorsList.find(i => getField(i, 'الاسم') === insSel.value);
-                document.getElementById('specialty').value = insData ? getField(insData, 'التخصص') : '';
+                const data = _inspectorsList.find(i => i['الاسم'] === insSel.value);
+                specInp.value = data ? data['التخصص'] : '';
             });
 
-            munSel.addEventListener('change', updateInstitutions);
+            // 4. فلترة المؤسسات (المرحلة + البلدية)
+            function updateInstitutions() {
+                const stage = stageSel.value;
+                const municipality = munSel.value;
+                if (!stage || !municipality) {
+                    instSel.disabled = true;
+                    return;
+                }
+                const filtered = _institutionsList.filter(i => i['المرحلة'] === stage && i['البلدية'] === municipality);
+                instSel.innerHTML = '<option value="">-- اختر المؤسسة (${filtered.length}) --</option>';
+                filtered.forEach(i => {
+                    const opt = document.createElement('option'); opt.value = i['اسم المؤسسة']; opt.textContent = i['اسم المؤسسة'];
+                    instSel.appendChild(opt);
+                });
+                instSel.disabled = false;
+            }
 
+            munSel.addEventListener('change', updateInstitutions);
             document.getElementById('visitForm').addEventListener('submit', handleVisitSubmit);
+            
+            await init();
             await loadVisits();
         });
     </script>
