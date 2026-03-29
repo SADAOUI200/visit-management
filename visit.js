@@ -14,7 +14,7 @@ let allVisits = [];
 let filteredVisits = [];
 let columnMapping = {};
 
-// ── إعدادات الترقيم (Pagination) ──────────────────────────────
+// ── متغيرات الترقيم (Pagination) ──────────────────────────────
 let currentPage = 1;
 const rowsPerPage = 10;
 
@@ -42,39 +42,41 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-// ── جلب زيارات المفتشين ────────────────────────────────────────
+// ── جلب البيانات ──────────────────────────────────────────────
 async function fetchVisits() {
-    if (typeof showLoader === 'function') showLoader();
+    showLoader();
     try {
         const url = getSheetURL('visits') + '?action=get&sheet=visit';
         const res = await fetch(url);
         const raw = await res.json();
         let data = Array.isArray(raw) ? raw : (raw.data || []);
         if (data.length > 0) columnMapping = buildMapping(data[0]);
+        hideLoader();
         return { ok: true, data };
     } catch (err) {
-        console.error("Error fetching visits:", err);
+        console.error("Fetch error:", err);
+        hideLoader();
         return { ok: false, data: [] };
-    } finally {
-        if (typeof hideLoader === 'function') hideLoader();
     }
 }
 
-// ── عرض الجدول مع نظام الترقيم ──────────────────────────────────
+// ── عرض الجدول مع نظام الترقيم (Pagination) ───────────────────
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات حالياً</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات مطابقة</td></tr>';
         updatePaginationControls(0);
         return;
     }
 
+    // حساب نطاق الصفحة الحالية
     const start = (currentPage - 1) * rowsPerPage;
-    const paginated = visits.slice(start, start + rowsPerPage);
+    const end = start + rowsPerPage;
+    const paginatedVisits = visits.slice(start, end);
 
-    tbody.innerHTML = paginated.map((v, i) => `
+    tbody.innerHTML = paginatedVisits.map((v, i) => `
         <tr>
             <td>${start + i + 1}</td>
             <td title="${getField(v, 'المعرف')}">${(getField(v, 'المعرف') || '').substring(0, 8)}</td>
@@ -97,17 +99,17 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-function updatePaginationControls(total) {
-    const totalPages = Math.ceil(total / rowsPerPage);
+function updatePaginationControls(totalRows) {
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
     const container = document.getElementById('paginationControls');
     if (!container) return;
 
     container.innerHTML = `
-        <button class="btn btn-sm" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>⏮️ الأولى</button>
+        <button class="btn btn-sm" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>البداية</button>
         <button class="btn btn-sm" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>السابق</button>
-        <span style="margin: 0 10px; font-weight: bold;">صفحة ${currentPage} من ${totalPages || 1}</span>
+        <span style="margin: 0 10px; font-weight: bold;">${currentPage} / ${totalPages || 1}</span>
         <button class="btn btn-sm" onclick="changePage(1)" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>التالي</button>
-        <button class="btn btn-sm" onclick="goToPage(${totalPages})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>الأخيرة ⏭️</button>
+        <button class="btn btn-sm" onclick="goToPage(${totalPages})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>النهاية</button>
     `;
 }
 
@@ -117,7 +119,7 @@ function goToPage(p) { currentPage = p; renderTable(filteredVisits); }
 async function loadVisits() {
     const result = await fetchVisits();
     allVisits = result.data;
-    applySearch(); 
+    applySearch();
 }
 
 function applySearch() {
@@ -162,7 +164,7 @@ async function handleVisitSubmit(e) {
         'الموسم الدراسي': form.season.value
     };
 
-    if (typeof showLoader === 'function') showLoader();
+    showLoader();
     try {
         await fetch(getSheetURL('visits'), {
             method: 'POST',
@@ -173,5 +175,5 @@ async function handleVisitSubmit(e) {
         form.reset();
         await loadVisits();
     } catch (err) { console.error(err); }
-    if (typeof hideLoader === 'function') hideLoader();
+    hideLoader();
 }

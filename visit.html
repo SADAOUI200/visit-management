@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>إدارة الزيارات – مصلحة التفتيش</title>
+    <title>الزيارات التفتيشية – نظام إدارة الزيارات</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 20px 0; }
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         .search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
-        #specialty { background-color: #f3f4f6; border: 1px solid #d1d5db; color: #1e3a8a; font-weight: bold; }
+        #specialty { background-color: #f9fafb; font-weight: bold; color: #111827; }
     </style>
 </head>
 <body>
     <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
     
     <nav class="navbar">
-        <div class="brand">🏫 نظام إدارة الزيارات التفتيشية</div>
+        <div class="brand">🏫 مصلحة التفتيش - إدارة الزيارات</div>
         <div class="nav-links"><span id="navUserInfo"></span><button class="btn btn-danger btn-sm" onclick="logout()">خروج</button></div>
     </nav>
 
@@ -26,7 +26,7 @@
             <form id="visitForm">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>المرحلة</label>
+                        <label>المرحلة التعليمية</label>
                         <select id="stageSelect" name="stage" required>
                             <option value="">-- اختر المرحلة --</option>
                             <option value="ابتدائي">ابتدائي</option>
@@ -81,16 +81,16 @@
                     </div>
                     <div class="form-group"><label>تاريخ الزيارة</label><input type="date" name="visitDate" id="vDate" required /></div>
                     <div class="form-group"><label>النقطة</label><input type="number" name="score" step="0.25" /></div>
-                    <div class="form-group"><label>الموسم</label><select name="season"><option selected>2025 / 2026</option></select></div>
+                    <div class="form-group"><label>الموسم الدراسي</label><select name="season"><option selected>2025 / 2026</option></select></div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-accent">📥 حفظ البيانات</button></div>
+                <div class="form-actions"><button type="submit" class="btn btn-accent">📥 حفظ</button></div>
             </form>
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">🔍 سجل الزيارات</div>
+            <div class="card-title">🔍 سجل البحث والفلترة</div>
             <div class="search-grid">
-                <input type="text" id="searchName" placeholder="بحث باسم المعني..." oninput="applySearch()" />
+                <input type="text" id="searchName" placeholder="بحث بالاسم..." oninput="applySearch()" />
                 <input type="text" id="searchInst" placeholder="بحث بالمؤسسة..." oninput="applySearch()" />
                 <input type="text" id="searchInspector" placeholder="بحث بالمفتش..." oninput="applySearch()" />
             </div>
@@ -98,8 +98,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th><th>المعرف</th><th>التوقيت</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
-                            <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>التاريخ</th>
+                            <th>#</th><th>المعرف</th><th>التاريخ</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
+                            <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>تاريخ الزيارة</th>
                             <th>النوع</th><th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
                         </tr>
                     </thead>
@@ -120,43 +120,43 @@
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
 
-            // 1. البلديات الـ 13
+            // 1. تعبئة البلديات الـ 13
             const MUNICIPALITIES = ['توقرت','النزلة','تبسبست','الزاوية العابدية','تماسين','بلدة عمر','الطيبات','المنقر','بن ناصر','المقارين','سيدي سليمان','الحجيرة','العالية'];
             const munSel = document.getElementById('municipalitySelect');
             MUNICIPALITIES.sort().forEach(m => munSel.add(new Option(m, m)));
 
-            // 2. جلب البيانات الأساسية (المؤسسات من الرابط الجديد)
-            async function initFormDropdowns() {
+            // 2. جلب البيانات من الروابط
+            async function initData() {
                 showLoader();
                 try {
-                    const [inspRes, instRes] = await Promise.all([
+                    const [inspData, instResp] = await Promise.all([
                         fetchInspectors(),
                         fetch("https://script.google.com/macros/s/AKfycbwNzwChPUA8cfMmeskQhLCsLc8lSsuM8vWMkCKpDLnRADwW1iePrMeh7c3qdNfXEUBevw/exec?action=get&sheet=institutions")
                     ]);
-                    _inspectorsList = inspRes;
-                    const instData = await instRes.json();
-                    _institutionsList = Array.isArray(instData) ? instData : (instData.data || []);
+                    _inspectorsList = inspData;
+                    const instJson = await instResp.json();
+                    _institutionsList = Array.isArray(instJson) ? instJson : (instJson.data || []);
                 } catch (e) { console.error("Data Load Error:", e); }
                 hideLoader();
             }
 
-            await initFormDropdowns();
+            await initData();
             await loadVisits();
 
             const stageSel = document.getElementById('stageSelect');
             const insSel = document.getElementById('inspectorSelect');
             const instSel = document.getElementById('institutionSelect');
 
-            function filterLogic() {
+            function filterDropdowns() {
                 const stage = stageSel.value;
                 const mun = munSel.value;
 
-                // فلترة المفتشين
+                // تصفية المفتشين
                 insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
                 _inspectorsList.filter(i => i['المرحلة'] === stage).forEach(i => insSel.add(new Option(i['الاسم'], i['الاسم'])));
                 insSel.disabled = false;
 
-                // فلترة المؤسسات (المرحلة + البلدية)
+                // تصفية المؤسسات
                 if (stage && mun) {
                     instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
                     const filtered = _institutionsList.filter(i => 
@@ -169,8 +169,8 @@
                 }
             }
 
-            stageSel.addEventListener('change', filterLogic);
-            munSel.addEventListener('change', filterLogic);
+            stageSel.addEventListener('change', filterDropdowns);
+            munSel.addEventListener('change', filterDropdowns);
             insSel.addEventListener('change', () => {
                 const insp = _inspectorsList.find(i => i['الاسم'] === insSel.value);
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
