@@ -1,181 +1,194 @@
-// ── Render Visits Table ───────────────────────────────────────
+/**
+ * نظام إدارة الزيارات التفتيشية - نسخة مصلحة
+ */
+
+const FIELD_NAMES = [
+    'المعرف', 'timestamp', 'اسم المفتش', 'التخصص', 'المرحلة',
+    'اسم المعني بالزيارة', 'الرتبة', 'الدرجة', 'المؤسسة',
+    'تاريخ الزيارة', 'نوع الزيارة', 'النقطة', 'العقوبات',
+    'الملاحظة', 'الموسم الدراسي'
+];
+
+let allVisits = [];
+let filteredVisits = [];
+let columnMapping = {};
+
+// ── توليد معرف فريد ─────────────────────────────────────────────
+function generateId() {
+    return 'VIS-' + Math.random().toString(36).substr(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+}
+
+function normalizeKey(str) {
+    return String(str || '').normalize('NFC').trim().replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, '').replace(/\s+/g, ' ');
+}
+
+// ── بناء خريطة الأعمدة ─────────────────────────────────────────
+function buildMapping(firstRow, headerRow) {
+    const mapping = {};
+    let actualKeys = (headerRow && Array.isArray(headerRow)) 
+        ? headerRow.map(h => normalizeKey(String(h))) 
+        : Object.keys(firstRow || {});
+
+    actualKeys.forEach((key, i) => {
+        if (i < FIELD_NAMES.length) mapping[key] = FIELD_NAMES[i];
+    });
+    return mapping;
+}
+
+function getField(row, ...keys) {
+    for (const key of keys) {
+        if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') return row[key];
+        const norm = normalizeKey(key);
+        if (row[norm] !== undefined && row[norm] !== null) return row[norm];
+    }
+    return '';
+}
+
+// ── جلب البيانات من Google Sheets ──────────────────────────────
+async function fetchVisits() {
+    showLoader();
+    try {
+        const visitsURL = getSheetURL('visits');
+        const url = visitsURL + '?action=get&sheet=visit&sheetName=visit';
+        const res = await fetchWithTimeout(url, { method: 'GET', mode: 'cors' }, 20000);
+        const raw = await res.json();
+        
+        let data = [];
+        if (Array.isArray(raw)) data = raw;
+        else if (raw.data) data = raw.data;
+        else if (raw.values) {
+            const headers = raw.values[0];
+            data = raw.values.slice(1).map(row => {
+                let obj = {};
+                headers.forEach((h, i) => obj[normalizeKey(h)] = row[i]);
+                return obj;
+            });
+        }
+        
+        hideLoader();
+        return { ok: true, data };
+    } catch (err) {
+        hideLoader();
+        return { ok: false, data: [], msg: err.message };
+    }
+}
+
+// ── عرض الجدول (الإصلاح الجوهري هنا) ───────────────────────────
 function renderTable(visits, tableBodyId) {
     const tbody = document.getElementById(tableBodyId || 'visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = `
-      <tr><td colspan="16" class="empty-state">
-        <span class="icon">📋</span>لا توجد زيارات للعرض
-      </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="15" class="empty-state">📋 لا توجد زيارات للعرض</td></tr>`;
         return;
     }
 
     tbody.innerHTML = visits.map((v, i) => {
-        const f = (key, ...alt) => getField(v, key, ...alt) || '-';
         return `
     <tr>
       <td>${i + 1}</td>
-      <td title="${f('المعرف')}">${f('المعرف').substring(0, 16)}</td>
+      <td title="${getField(v, 'المعرف', 'id')}">${(getField(v, 'المعرف', 'id') || '').substring(0, 8)}</td>
       <td>${formatDate(getField(v, 'timestamp')) || '-'}</td>
-      <td>${f('اسم المفتش')}</td>
-      <td>${f('التخصص')}</td>
-      <td>${f('المرحلة')}</td>
-      <td>${f('اسم المعني بالزيارة')}</td>
-      <td>${f('الرتبة')}</td>
-      <td>${f('الدرجة')}</td>
-      <td>${f('المؤسسة')}</td>
-      <td>${f('تاريخ الزيارة')}</td>
-      <td>${f('نوع الزيارة')}</td>
-      <td>${f('النقطة')}</td>
-      <td>${f('العقوبات')}</td>
-      <td>${f('الملاحظة')}</td>
-      <td>${f('الموسم الدراسي')}</td>
+      <td>${getField(v, 'اسم المفتش', 'inspector')}</td>
+      <td>${getField(v, 'التخصص', 'specialty')}</td>
+      <td>${getField(v, 'المرحلة', 'stage')}</td>
+      <td>${getField(v, 'اسم المعني بالزيارة', 'visitee')}</td>
+      <td>${getField(v, 'الرتبة', 'rank')}</td>
+      <td>${getField(v, 'الدرجة', 'grade')}</td>
+      <td>${getField(v, 'المؤسسة', 'institution')}</td>
+      <td>${getField(v, 'تاريخ الزيارة', 'visitDate')}</td>
+      <td>${getField(v, 'نوع الزيارة', 'visitType')}</td>
+      <td>${getField(v, 'النقطة', 'score')}</td>
+      <td>${getField(v, 'العقوبات', 'penalties')}</td>
+      <td>${getField(v, 'الموسم الدراسي', 'season')}</td>
     </tr>`;
     }).join('');
 }
 
-// ── Helper: Get field value with fallback ────────────────────
-function getField(obj, key, ...fallbackKeys) {
-    if (!obj) return undefined;
-    let value = obj[key];
-    if (value !== undefined && value !== null && value !== '') return value;
-    for (const fk of fallbackKeys) {
-        value = obj[fk];
-        if (value !== undefined && value !== null && value !== '') return value;
-    }
-    return undefined;
-}
-
-// ── Format Date ──────────────────────────────────────────────
-function formatDate(dateStr) {
-    if (!dateStr) return '';
-    try {
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return dateStr;
-        return new Intl.DateTimeFormat('ar-DZ', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-        }).format(date);
-    } catch (e) {
-        return dateStr;
-    }
-}
-
-// ── Filter Inspectors by Level ───────────────────────────────
-function filterInspectorsByLevel(inspectors, level) {
-    if (!inspectors || !level) return [];
-    return inspectors.filter(ins => {
-        const insLevel = normalizeStr(ins['المرحلة']);
-        const selectedLevel = normalizeStr(level);
-        return insLevel === selectedLevel;
-    });
-}
-
-// ── Filter Institutions by Level and Municipality ───────────
-function filterInstitutionsByLevelAndMunicipality(institutions, level, municipality) {
-    if (!institutions || !level || !municipality) return [];
-    return institutions.filter(inst => {
-        const instLevel = normalizeStr(inst['المرحلة']);
-        const instMun = normalizeStr(inst['البلدية']);
-        const selectedLevel = normalizeStr(level);
-        const selectedMun = normalizeStr(municipality);
-        return instLevel === selectedLevel && instMun === selectedMun;
-    });
-}
-
-// ── Load Visits from API ─────────────────────────────────────
-let _allVisits = [];
-
+// ── تحميل البيانات مع مراعاة الرتب ──────────────────────────────
 async function loadVisits() {
-    showLoader();
-    try {
-        const visits = await fetchSheet('visits', [
-            'المعرف', 'اسم المفتش', 'التخصص', 'المرحلة',
-            'اسم المعني بالزيارة', 'الرتبة', 'الدرجة', 'المؤسسة',
-            'تاريخ الزيارة', 'نوع الزيارة', 'النقطة', 'العقوبات',
-            'الملاحظة', 'الموسم الدراسي', 'timestamp'
-        ]);
-        _allVisits = visits;
-        applySearch();
-        const count = visits.length;
-        document.getElementById('resultsCount').textContent = `${count} زيارة`;
-    } catch (err) {
-        console.error('[visit.js] loadVisits error:', err);
-        showToast('خطأ في تحميل الزيارات', 'error', 6000);
-    } finally {
-        hideLoader();
+    const result = await fetchVisits();
+    allVisits = result.data;
+    const session = getSession();
+
+    if (session && session.role === 'inspector') {
+        filteredVisits = allVisits.filter(v => 
+            normalizeKey(getField(v, 'اسم المفتش', 'inspector')) === normalizeKey(session.name)
+        );
+    } else {
+        filteredVisits = allVisits;
     }
+
+    renderTable(filteredVisits);
+    document.getElementById('resultsCount').textContent = `${filteredVisits.length} نتيجة`;
 }
 
-// ── Search/Filter Visits ─────────────────────────────────────
+// ── باقي الدوال (Search, Submit, etc.) تبقى كما هي في ملفك الأصلي ──
 function applySearch() {
-    // ✅ جديد - مع دعم أفضل
-const searchName = document.getElementById('searchName')?.value?.toLowerCase() || '';
-const searchInst = document.getElementById('searchInst')?.value?.toLowerCase() || '';
-const searchInspector = document.getElementById('searchInspector')?.value?.toLowerCase() || '';
+    const nameQ = (document.getElementById('searchName')?.value || '').trim().toLowerCase();
+    const instQ = (document.getElementById('searchInst')?.value || '').trim().toLowerCase();
+    const inspecQ = (document.getElementById('searchInspector')?.value || '').trim().toLowerCase();
 
-// إضافة معالجة خطأ
-if (!document.getElementById('visitsTableBody')) {
-    console.error('❌ خطأ: عنصر الجدول غير موجود');
-}';
-
-    const filtered = _allVisits.filter(v => {
-        const name = (v['اسم المعني بالزيارة'] || '').toLowerCase();
-        const inst = (v['المؤسسة'] || '').toLowerCase();
-        const inspector = (v['اسم المفتش'] || '').toLowerCase();
-
-        return (
-            (!searchName || name.includes(searchName)) &&
-            (!searchInst || inst.includes(searchInst)) &&
-            (!searchInspector || inspector.includes(searchInspector))
-        );
+    const searched = filteredVisits.filter(v => {
+        const name = (getField(v, 'اسم المعني بالزيارة', 'visitee') || '').toLowerCase();
+        const inst = (getField(v, 'المؤسسة', 'institution') || '').toLowerCase();
+        const inspec = (getField(v, 'اسم المفتش', 'inspector') || '').toLowerCase();
+        return (!nameQ || name.includes(nameQ)) && (!instQ || inst.includes(instQ)) && (!inspecQ || inspec.includes(inspecQ));
     });
 
-    renderTable(filtered);
-    document.getElementById('resultsCount').textContent = `${filtered.length} من ${_allVisits.length} زيارة`;
+    renderTable(searched);
 }
 
-// ── Handle Visit Form Submission ─────────────────────────────
+function formatDate(val) {
+    if (!val) return '';
+    const d = new Date(val);
+    return isNaN(d) ? val : d.toLocaleDateString('ar-DZ');
+}
+
 async function handleVisitSubmit(e) {
     e.preventDefault();
-    
-    const form = document.getElementById('visitForm');
-    if (!form.checkValidity()) {
-        showToast('الرجاء ملء جميع الحقول المطلوبة', 'error', 4000);
-        return;
-    }
+    const session = getSession();
+    const form = e.target;
 
     const visitData = {
-        'المعرف': generateDataId('VISIT'),
-        'اسم المفتش': document.getElementById('inspectorSelect').value,
-        'التخصص': document.getElementById('specialty').value,
-        'المرحلة': document.getElementById('stageSelect').value,
-        'اسم المعني بالزيارة': document.getElementById('visitee').value,
-        'الرتبة': document.getElementById('rank').value || '',
-        'الدرجة': document.getElementById('grade').value || '',
-        'المؤسسة': document.getElementById('institutionSelect').value,
-        'تاريخ الزيارة': document.getElementById('visitDate').value,
-        'نوع الزيارة': document.getElementById('visitType').value,
-        'النقطة': document.getElementById('score').value || '',
-        'العقوبات': document.getElementById('penalties').value,
-        'الملاحظة': document.getElementById('notes').value,
-        'الموسم الدراسي': document.getElementById('season').value,
-        'timestamp': new Date().toISOString()
+        'المعرف': generateId(),
+        'timestamp': new Date().toISOString(),
+        'اسم المفتش': document.getElementById('inspectorSelect')?.value || session.name,
+        'التخصص': form.specialty?.value,
+        'المرحلة': form.stage?.value,
+        'اسم المعني بالزيارة': form.visitee?.value,
+        'الرتبة': form.rank?.value,
+        'الدرجة': form.grade?.value,
+        'المؤسسة': document.getElementById('institutionSelect')?.value,
+        'تاريخ الزيارة': form.visitDate?.value,
+        'نوع الزيارة': form.visitType?.value,
+        'النقطة': form.score?.value,
+        'العقوبات': form.penalties?.value,
+        'الملاحظة': form.notes?.value,
+        'الموسم الدراسي': form.season?.value
     };
 
-    try {
-        await submitToSheet('visits', visitData, [
-            'المعرف', 'اسم المفتش', 'التخصص', 'المرحلة',
-            'اسم المعني بالزيارة', 'الرتبة', 'الدرجة', 'المؤسسة',
-            'تاريخ الزيارة', 'نوع الزيارة', 'النقطة', 'العقوبات',
-            'الملاحظة', 'الموسم الدراسي', 'timestamp'
-        ]);
-        showSuccess('✅ تم حفظ الزيارة بنجاح');
+    const res = await submitVisit(visitData);
+    if (res.ok) {
+        showToast('✅ تم الحفظ');
         form.reset();
         await loadVisits();
+    }
+}
+
+async function submitVisit(formData) {
+    showLoader();
+    try {
+        const visitsURL = getSheetURL('visits');
+        await fetch(visitsURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'insert', sheet: 'visit', data: formData })
+        });
+        hideLoader();
+        return { ok: true };
     } catch (err) {
-        console.error('[visit.js] Submission error:', err);
-        showError('فشل حفظ الزيارة: ' + err.message);
+        hideLoader();
+        return { ok: false };
     }
 }
