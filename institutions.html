@@ -5,17 +5,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>إدارة المؤسسات – نظام إدارة الزيارات التفتيشية</title>
-    <meta name="description" content="إضافة وعرض المؤسسات التعليمية" />
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* تنسيقات إضافية للأزرار الجديدة */
-        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; }
-        .action-btns { display: flex; gap: 4px; justify-content: center; }
-        .btn-edit { background-color: #f59e0b !important; color: white !important; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-        .btn-delete { background-color: #ef4444 !important; color: white !important; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-        .stats-badge { background: var(--accent-color); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.85rem; }
+        /* التنسيقات الضرورية للأزرار والترقيم */
+        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 15px; border-top: 1px solid #eee; }
+        .action-btns { display: flex; gap: 5px; justify-content: center; }
+        .btn-edit { background: #f59e0b !important; color: white !important; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-delete { background: #ef4444 !important; color: white !important; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-page { padding: 5px 15px; cursor: pointer; }
     </style>
 </head>
 
@@ -27,7 +24,6 @@
         <div class="nav-links">
             <span class="user-info" id="navUserInfo"></span>
             <a href="dashboard.html" class="btn btn-ghost btn-sm">⚙️ لوحة التحكم</a>
-            <a href="visit.html" class="btn btn-ghost btn-sm">📋 الزيارات</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج</button>
         </div>
     </nav>
@@ -35,7 +31,6 @@
     <div class="container">
         <header class="page-header">
             <h1 class="page-title">🏢 إدارة المؤسسات التعليمية</h1>
-            <p class="page-subtitle">إضافة وتعديل بيانات المؤسسات في المقاطعة</p>
         </header>
 
         <div class="card fade-in">
@@ -48,7 +43,7 @@
                     </div>
                     <div class="form-group">
                         <label for="instName">اسم المؤسسة</label>
-                        <input type="text" id="instName" name="name" placeholder="مثال: مدرسة الشهيد..." required />
+                        <input type="text" id="instName" name="name" required />
                     </div>
                     <div class="form-group">
                         <label for="instLevel">المرحلة التعليمية</label>
@@ -56,15 +51,14 @@
                     </div>
                     <div class="form-group">
                         <label for="instManager">مدير المؤسسة</label>
-                        <input type="text" id="instManager" name="manager" placeholder="الاسم واللقب" required />
+                        <input type="text" id="instManager" name="manager" required />
                     </div>
                     <div class="form-group">
                         <label for="instFinancial">المسيّر المالي</label>
-                        <input type="text" id="instFinancial" name="financialManager" placeholder="الاسم واللقب" />
+                        <input type="text" id="instFinancial" name="financialManager" />
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="reset" class="btn btn-ghost">إعادة تعيين</button>
                     <button type="submit" class="btn btn-accent">📥 حفظ المؤسسة</button>
                 </div>
             </form>
@@ -72,22 +66,20 @@
 
         <div class="card fade-in" style="margin-top: 2rem;">
             <div class="card-header-flex">
-                <div class="card-title">📋 قائمة المؤسسات المسجلة</div>
-                <div id="instCount" class="stats-badge">0 مؤسسة</div>
+                <div class="card-title">📋 قائمة المؤسسات</div>
+                <div class="stats-badge" id="instCount">0 مؤسسة</div>
             </div>
 
             <div class="search-grid">
-                <div class="form-group"><input type="text" id="searchInstName" placeholder="🔍 بحث باسم المؤسسة..." /></div>
-                <div class="form-group"><input type="text" id="searchInstMunicipality" placeholder="📍 بحث بالبلدية..." /></div>
+                <div class="form-group"><input type="text" id="searchInstName" placeholder="بحث بالاسم..." /></div>
+                <div class="form-group"><input type="text" id="searchInstMunicipality" placeholder="بحث بالبلدية..." /></div>
                 <div class="form-group">
                     <select id="searchInstLevel">
                         <option value="">-- كل المراحل --</option>
                         <option>ابتدائي</option><option>متوسط</option><option>ثانوي</option>
                     </select>
                 </div>
-                <div class="form-group" style="align-self:flex-end;">
-                    <button class="btn btn-ghost" onclick="clearInstSearch()" style="width:100%;">✕ مسح البحث</button>
-                </div>
+                <div class="form-group"><button class="btn btn-ghost" onclick="clearInstSearch()">✕ مسح</button></div>
             </div>
 
             <div class="table-wrap">
@@ -98,14 +90,13 @@
                             <th>البلدية</th>
                             <th>اسم المؤسسة</th>
                             <th>المرحلة</th>
-                            <th>مدير المؤسسة</th>
+                            <th>المدير</th>
                             <th>المسيّر المالي</th>
-                            <th style="text-align:center">الإجراءات</th>
+                            <th>الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="institutionsTableBody">
-                        <tr><td colspan="7" class="empty-state">جارٍ تحميل البيانات...</td></tr>
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div id="paginationControls" class="pagination-container"></div>
