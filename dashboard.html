@@ -5,56 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>لوحة التحكم – نظام إدارة الزيارات التفتيشية</title>
-    <meta name="description" content="لوحة تحكم مدير النظام لإدارة الحسابات والإحصائيات" />
+    <meta name="description" content="لوحة تحكم مدير النظام لإدارة الحسابات" />
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
-    <style>
-        /* تحسينات إضافية لبطاقات الإحصائيات */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .stat-card {
-            background: var(--card-bg, #1e293b);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover { transform: translateY(-5px); }
-
-        .stat-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .stat-info .stat-value {
-            display: block;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--text, #f8fafc);
-            line-height: 1;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-info .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-muted, #94a3b8);
-        }
-    </style>
 </head>
 
 <body>
@@ -84,14 +38,14 @@
                 <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
                     <div class="stat-value" id="stat-institutions">0</div>
-                    <div class="stat-label">المؤسسات التعليمية</div>
+                    <div class="stat-label">المؤسسات</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.1s;">
                 <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
                     <div class="stat-value" id="stat-inspectors">0</div>
-                    <div class="stat-label">المفتشون المسجلون</div>
+                    <div class="stat-label">المفتشين</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.2s;">
@@ -109,7 +63,7 @@
                 <form id="createUserForm">
                     <div class="form-group">
                         <label for="name">الاسم الكامل</label>
-                        <input type="text" id="name" name="name" placeholder="مثال: أحمد محمد" required />
+                        <input type="text" id="name" name="name" placeholder="أدخل الاسم الكامل..." required />
                     </div>
                     <div class="form-group">
                         <label for="username">اسم المستخدم</label>
@@ -141,7 +95,7 @@
                         <thead>
                             <tr>
                                 <th>الاسم</th>
-                                <th>المستخدم</th>
+                                <th>اسم المستخدم</th>
                                 <th>الصلاحية</th>
                                 <th style="text-align: center;">إجراءات</th>
                             </tr>
@@ -157,42 +111,24 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script>
-        // ── التحقق من الصلاحيات ─────────────────────────────────────────
-        requireAuth(['admin']); 
+        // التحقق من الصلاحيات
+        requireAuth(['admin']);
         updateUserInfo();
 
-        // ── تحديث الإحصائيات الحية ───────────────────────────────────────
+        // ── وظيفة تحديث الإحصائيات الحية ───────────────────────────────────────
         async function loadDashboardStats() {
             try {
-                const [insts, insps, visits] = await Promise.all([
-                    typeof fetchInstitutions === 'function' ? fetchInstitutions(true) : [],
-                    typeof fetchInspectors === 'function' ? fetchInspectors(true) : [],
-                    typeof fetchVisits === 'function' ? fetchVisits(true) : []
-                ]);
+                // جلب البيانات من الدوال الموجودة في data.js
+                const insts = typeof fetchInstitutions === 'function' ? await fetchInstitutions(true) : [];
+                const insps = typeof fetchInspectors === 'function' ? await fetchInspectors(true) : [];
+                const visits = typeof fetchVisits === 'function' ? await fetchVisits(true) : [];
 
-                animateValue("stat-institutions", insts.length);
-                animateValue("stat-inspectors", insps.length);
-                animateValue("stat-visits", visits.length);
+                document.getElementById('stat-institutions').textContent = insts.length;
+                document.getElementById('stat-inspectors').textContent = insps.length;
+                document.getElementById('stat-visits').textContent = visits.length;
             } catch (e) {
                 console.error("خطأ في تحميل الإحصائيات:", e);
             }
-        }
-
-        function animateValue(id, end) {
-            const obj = document.getElementById(id);
-            if (!obj) return;
-            let start = 0;
-            const duration = 800;
-            const range = end - start;
-            let startTime = null;
-
-            function step(timestamp) {
-                if (!startTime) startTime = timestamp;
-                const progress = Math.min((timestamp - startTime) / duration, 1);
-                obj.innerText = Math.floor(progress * range + start);
-                if (progress < 1) window.requestAnimationFrame(step);
-            }
-            window.requestAnimationFrame(step);
         }
 
         // ── إدارة المستخدمين ───────────────────────────────────────────
@@ -205,7 +141,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${u.name}</strong></td>
-                    <td><code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;">${u.username}</code></td>
+                    <td><code>${u.username}</code></td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-accent' : ''}">${u.role === 'admin' ? 'مدير' : 'مستخدم'}</span></td>
                     <td style="text-align: center;">
                         <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}', '${u.name}')" 
@@ -220,27 +156,25 @@
             if (!confirm(`هل أنت متأكد من حذف حساب "${name}"؟`)) return;
             deleteUser(username);
             renderUsers();
-            showToast(`تم حذف حساب ${name}`, 'warning');
+            showToast(`تمّ حذف حساب ${name}`, 'warning');
         }
 
         document.getElementById('createUserForm').addEventListener('submit', function (e) {
             e.preventDefault();
             const form = e.target;
             const btn = document.getElementById('createBtn');
-            const data = {
-                name: form.name.value.trim(),
-                username: form.username.value.trim(),
-                password: form.password.value.trim(),
-                role: form.role.value
-            };
+            const name = form.name.value.trim();
+            const username = form.username.value.trim();
+            const password = form.password.value.trim();
+            const role = form.role.value;
 
             btn.disabled = true;
-            btn.textContent = 'جارٍ المعالجة...';
+            btn.textContent = 'جارٍ الإنشاء...';
 
             setTimeout(() => {
-                const result = addUser(data);
+                const result = addUser({ username, password, role, name });
                 if (result.ok) {
-                    showToast(`✅ تم إنشاء حساب ${data.name}`);
+                    showToast(`✅ تمّ إنشاء حساب ${name} بنجاح`);
                     form.reset();
                     renderUsers();
                 } else {
@@ -248,10 +182,10 @@
                 }
                 btn.disabled = false;
                 btn.innerHTML = '✅ إنشاء الحساب';
-            }, 400);
+            }, 300);
         });
 
-        // ── تشغيل الوظائف عند التحميل ─────────────────────────────────────
+        // تشغيل الوظائف عند التحميل
         document.addEventListener('DOMContentLoaded', () => {
             renderUsers();
             loadDashboardStats();
