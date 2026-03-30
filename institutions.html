@@ -7,17 +7,15 @@
     <title>إدارة المؤسسات – نظام إدارة الزيارات التفتيشية</title>
     <meta name="description" content="إضافة وعرض المؤسسات التعليمية" />
     <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>\" />
     <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-    <!-- Loader -->
     <div class="loader-overlay" id="loaderOverlay">
         <div class="spinner"></div>
     </div>
 
-    <!-- Navbar -->
     <nav class="navbar">
         <div class="brand">
             <span>🏫</span> نظام إدارة الزيارات التفتيشية
@@ -26,108 +24,64 @@
             <span class="user-info" id="navUserInfo"></span>
             <a href="dashboard.html" class="btn btn-ghost btn-sm">⚙️ لوحة التحكم</a>
             <a href="visit.html" class="btn btn-ghost btn-sm">📋 الزيارات</a>
-            <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
+            <button class="btn btn-danger btn-sm" onclick="logout()">خروج</button>
         </div>
     </nav>
 
     <div class="container">
+        <header class="page-header">
+            <h1 class="page-title">🏢 إدارة المؤسسات التعليمية</h1>
+            <p class="page-subtitle">إضافة وتعديل بيانات المؤسسات في المقاطعة</p>
+        </header>
 
-        <!-- Page Header -->
-        <div style="margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem;">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#10b981,#059669);
-                        display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🏫
-            </div>
-            <div>
-                <h2 style="margin:0;font-size:1.4rem;color:var(--text);">إدارة المؤسسات التعليمية</h2>
-                <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">إضافة وعرض المؤسسات المسجّلة في المنظومة
-                </p>
-            </div>
-            <span id="instCount" style="margin-right:auto;background:rgba(16,185,129,0.15);color:#6ee7b7;
-                  padding:4px 14px;border-radius:20px;font-size:0.85rem;font-weight:600;"></span>
-        </div>
-
-        <!-- ── Add Institution Form ────────────────────────────── -->
         <div class="card fade-in">
-            <div class="card-title">➕ إضافة مؤسسة تعليمية</div>
-            <form id="institutionForm" novalidate>
+            <div class="card-title">➕ إضافة مؤسسة جديدة</div>
+            <form id="institutionForm">
                 <div class="form-grid">
-
-                    <!-- البلدية -->
                     <div class="form-group">
-                        <label for="instMunicipality">البلدية <span class="req">*</span></label>
+                        <label for="instMunicipality">البلدية</label>
                         <select id="instMunicipality" name="municipality" required>
-                            <option value="">-- اختر البلدية --</option>
-                        </select>
+                            </select>
                     </div>
-
-                    <!-- اسم المؤسسة -->
                     <div class="form-group">
-                        <label for="instName">اسم المؤسسة <span class="req">*</span></label>
-                        <input type="text" id="instName" name="instName" placeholder="الاسم الرسمي للمؤسسة" required />
+                        <label for="instName">اسم المؤسسة</label>
+                        <input type="text" id="instName" name="name" placeholder="مثال: مدرسة الشهيد..." required />
                     </div>
-
-                    <!-- المرحلة التعليمية -->
                     <div class="form-group">
-                        <label for="instLevel">المرحلة التعليمية <span class="req">*</span></label>
+                        <label for="instLevel">المرحلة التعليمية</label>
                         <select id="instLevel" name="level" required>
-                            <option value="">-- اختر المرحلة --</option>
-                            <option>ابتدائي</option>
-                            <option>متوسط</option>
-                            <option>ثانوي</option>
-                        </select>
+                            </select>
                     </div>
-
-                    <!-- مدير المؤسسة (اختياري) -->
                     <div class="form-group">
-                        <label for="instDirector">
-                            مدير المؤسسة
-                            <span style="color:var(--text-muted);font-size:0.78rem;">(اختياري)</span>
-                        </label>
-                        <input type="text" id="instDirector" name="director" placeholder="اسم مدير المؤسسة" />
+                        <label for="instManager">مدير المؤسسة</label>
+                        <input type="text" id="instManager" name="manager" placeholder="الاسم واللقب" required />
                     </div>
-
-                    <!-- المسيّر المالي (اختياري) -->
                     <div class="form-group">
-                        <label for="instFinManager">
-                            المسيّر المالي
-                            <span style="color:var(--text-muted);font-size:0.78rem;">(اختياري)</span>
-                        </label>
-                        <input type="text" id="instFinManager" name="finManager" placeholder="اسم المسيّر المالي" />
+                        <label for="instFinancial">المسيّر المالي</label>
+                        <input type="text" id="instFinancial" name="financialManager" placeholder="الاسم واللقب" />
                     </div>
-
-                </div><!-- /form-grid -->
-
+                </div>
                 <div class="form-actions">
-                    <button type="reset" class="btn btn-ghost" id="instResetBtn">↺ مسح الحقول</button>
-                    <button type="submit" class="btn btn-accent" id="instSubmitBtn">
-                        <span>💾</span> حفظ المؤسسة
-                    </button>
+                    <button type="reset" class="btn btn-ghost">إعادة تعيين</button>
+                    <button type="submit" class="btn btn-accent">📥 حفظ المؤسسة</button>
                 </div>
             </form>
         </div>
 
-        <!-- ── Institutions Table ──────────────────────────────── -->
-        <div class="card fade-in">
-            <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
-                <span>🔎 قائمة المؤسسات</span>
+        <div class="card fade-in" style="margin-top: 2rem;">
+            <div class="card-header-flex">
+                <div class="card-title">📋 قائمة المؤسسات المسجلة</div>
+                <div class="stats-badge" id="instCount">0 مؤسسة</div>
             </div>
 
-            <!-- Search -->
-            <div class="search-bar" style="margin-bottom:1.25rem;">
+            <div class="search-grid">
                 <div class="form-group">
-                    <label for="searchInstName">🏫 اسم المؤسسة</label>
-                    <div class="search-input-wrap">
-                        <input type="search" id="searchInstName" placeholder="ابحث بالاسم..." />
-                    </div>
+                    <input type="text" id="searchInstName" placeholder="🔍 بحث باسم المؤسسة..." />
                 </div>
                 <div class="form-group">
-                    <label for="searchInstMunicipality">📍 البلدية</label>
-                    <div class="search-input-wrap">
-                        <input type="search" id="searchInstMunicipality" placeholder="ابحث بالبلدية..." />
-                    </div>
+                    <input type="text" id="searchInstMunicipality" placeholder="📍 بحث بالبلدية..." />
                 </div>
                 <div class="form-group">
-                    <label for="searchInstLevel">🎓 المرحلة</label>
                     <select id="searchInstLevel">
                         <option value="">-- كل المراحل --</option>
                         <option>ابتدائي</option>
@@ -140,7 +94,6 @@
                 </div>
             </div>
 
-            <!-- Table -->
             <div class="table-wrap">
                 <table id="institutionsTable">
                     <thead>
@@ -163,7 +116,7 @@
                 </table>
             </div>
         </div>
-    </div><!-- /container -->
+    </div>
 
     <script src="data.js"></script>
     <script src="app.js"></script>
