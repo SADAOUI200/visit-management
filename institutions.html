@@ -9,6 +9,14 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* تحسينات بسيطة لأزرار الترقيم والإجراءات لضمان مظهر احترافي */
+        .pagination-wrapper { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 10px; flex-wrap: wrap; }
+        .pagination-wrapper button { min-width: 80px; }
+        .action-btns { display: flex; gap: 5px; justify-content: center; }
+        .btn-edit { background-color: #f59e0b !important; color: white !important; border: none; }
+        .btn-delete { background-color: #ef4444 !important; color: white !important; border: none; }
+    </style>
 </head>
 
 <body>
@@ -40,7 +48,8 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="instMunicipality">البلدية</label>
-                        <select id="instMunicipality" name="municipality" required></select>
+                        <select id="instMunicipality" name="municipality" required>
+                            </select>
                     </div>
                     <div class="form-group">
                         <label for="instName">اسم المؤسسة</label>
@@ -48,7 +57,8 @@
                     </div>
                     <div class="form-group">
                         <label for="instLevel">المرحلة التعليمية</label>
-                        <select id="instLevel" name="level" required></select>
+                        <select id="instLevel" name="level" required>
+                            </select>
                     </div>
                     <div class="form-group">
                         <label for="instManager">مدير المؤسسة</label>
@@ -114,6 +124,8 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="paginationControls" class="pagination-wrapper"></div>
         </div>
     </div>
 
