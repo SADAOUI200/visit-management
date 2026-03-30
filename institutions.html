@@ -9,19 +9,6 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
-    <style>
-        /* تنسيق إضافي بسيط لأزرار الإجراءات والترقيم لضمان الجمالية */
-        .pagination-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-            padding: 10px;
-        }
-        .btn-edit { background-color: #f59e0b !important; color: white !important; }
-        .btn-edit:hover { background-color: #d97706 !important; }
-    </style>
 </head>
 
 <body>
@@ -53,8 +40,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="instMunicipality">البلدية</label>
-                        <select id="instMunicipality" name="municipality" required>
-                            </select>
+                        <select id="instMunicipality" name="municipality" required></select>
                     </div>
                     <div class="form-group">
                         <label for="instName">اسم المؤسسة</label>
@@ -62,8 +48,7 @@
                     </div>
                     <div class="form-group">
                         <label for="instLevel">المرحلة التعليمية</label>
-                        <select id="instLevel" name="level" required>
-                            </select>
+                        <select id="instLevel" name="level" required></select>
                     </div>
                     <div class="form-group">
                         <label for="instManager">مدير المؤسسة</label>
@@ -129,12 +114,11 @@
                     </tbody>
                 </table>
             </div>
-            </div>
+        </div>
     </div>
 
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script src="institutions.js"></script>
 </body>
-
 </html>
