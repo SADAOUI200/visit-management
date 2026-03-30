@@ -3,79 +3,60 @@
  * inspectors.js – Inspectors Management Page Logic
  */
 
-// ── DOM Elements ──────────────────────────────────────────────
+// ── عناصر واجهة المستخدم (DOM Elements) ──────────────────────────────
 const inspectorForm = document.getElementById('inspectorForm');
-const inspectorTableBody = document.getElementById('inspectorTableBody');
+const inspectorTableBody = document.getElementById('inspectorsTableBody'); // تصحيح المعرف ليطابق HTML
 const inspectorCount = document.getElementById('inspectorCount');
 const searchNameInput = document.getElementById('searchInspName');
 const searchSpecialtyInput = document.getElementById('searchInspSpecialty');
 const searchLevelSelect = document.getElementById('searchInspLevel');
 
-// ── State ─────────────────────────────────────────────────────
+// ── الحالة (State) ─────────────────────────────────────────────────────
 let allInspectors = [];
 
-// ── Initialize Page ───────────────────────────────────────────
+// ── تهيئة الصفحة ───────────────────────────────────────────
 async function initInspectorsPage() {
     showLoader();
-
     try {
-        // Load inspectors data
         await loadInspectors();
 
-        // Setup form submission
-        inspectorForm.addEventListener('submit', handleInspectorSubmit);
+        if (inspectorForm) {
+            inspectorForm.addEventListener('submit', handleInspectorSubmit);
+        }
 
-        // Setup search listeners
         if (searchNameInput) searchNameInput.addEventListener('input', handleSearch);
         if (searchSpecialtyInput) searchSpecialtyInput.addEventListener('input', handleSearch);
         if (searchLevelSelect) searchLevelSelect.addEventListener('change', handleSearch);
 
-        // Setup clear search button
-        const clearBtn = document.querySelector('button[onclick="clearInspSearch()"]');
-        if (clearBtn) clearBtn.onclick = clearSearch;
-
-        // Setup user info
         updateUserInfo();
-
     } catch (error) {
         console.error('Error initializing inspectors page:', error);
-        showError('حدث خطأ في تحميل البيانات');
     }
-
     hideLoader();
 }
 
-// ── Load Inspectors Data ──────────────────────────────────────
+// ── جلب بيانات المفتشين ──────────────────────────────────────
 async function loadInspectors() {
-    console.log('[inspectors.js] جارٍ تحميل قائمة المفتشين...');
-    
     try {
-        // إبطال الـ cache قبل الجلب
         _cache.inspectors = null;
         _cache.inspectorsTs = 0;
         
-        allInspectors = await fetchInspectors(true); // Force refresh
-        console.log('[inspectors.js] تم جلب البيانات:', allInspectors);
-        
-        if (!allInspectors || allInspectors.length === 0) {
-            console.warn('[inspectors.js] لا توجد بيانات - الجدول قد يكون فارغاً');
-        }
+        allInspectors = await fetchInspectors(true); 
         
         renderInspectors(allInspectors);
         updateCount(allInspectors.length);
     } catch (error) {
         console.error('[inspectors.js] خطأ في تحميل المفتشين:', error);
-        showError('خطأ في تحميل قائمة المفتشين: ' + error.message);
     }
 }
 
-// ── Render Inspectors Table ───────────────────────────────────
+// ── عرض جدول المفتشين ───────────────────────────────────
 function renderInspectors(inspectors) {
     if (!inspectorTableBody) return;
 
     inspectorTableBody.innerHTML = '';
 
-    if (inspectors.length === 0) {
+    if (!inspectors || inspectors.length === 0) {
         inspectorTableBody.innerHTML = `
             <tr>
                 <td colspan="6" class="empty-state">
@@ -86,23 +67,31 @@ function renderInspectors(inspectors) {
         return;
     }
 
-    const f = (row, key) => String(row[key] || '-');
+    // دالة مساعدة لجلب القيمة بمرونة حسب مسمى العمود في الشيت
+    const f = (row, keys) => {
+        for (let key of keys) {
+            if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                return String(row[key]);
+            }
+        }
+        return '-';
+    };
+
     inspectorTableBody.innerHTML = inspectors.map((ins, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td><strong>${f(ins, 'الاسم')}</strong></td>
-            <td><span class="badge" style="background:rgba(99,102,241,0.18);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">${f(ins, 'التخصص')}</span></td>
-            <td>${f(ins, 'المرحلة')}</td>
-            <td>${f(ins, 'الرتبة')}</td>
-            <td style="color:var(--text-muted);">${f(ins, 'الهاتف')}</td>
+            <td><strong>${f(ins, ['الاسم', 'الاسم الكامل', 'fullName'])}</strong></td>
+            <td><span class="badge" style="background:rgba(99,102,241,0.18);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">${f(ins, ['التخصص', 'specialty'])}</span></td>
+            <td>${f(ins, ['المرحلة', 'المرحلة التعليمية', 'level'])}</td>
+            <td>${f(ins, ['الرتبة', 'الرتبة الوظيفية', 'rank'])}</td>
+            <td style="color:var(--text-muted);">${f(ins, ['الهاتف', 'رقم الهاتف', 'phone'])}</td>
         </tr>
     `).join('');
 }
 
-// ── Handle Form Submission ────────────────────────────────────
+// ── معالجة إرسال النموذج ────────────────────────────────────
 async function handleInspectorSubmit(e) {
     e.preventDefault();
-
     const formData = new FormData(inspectorForm);
     const inspectorData = {
         'الاسم الكامل': formData.get('fullName').trim(),
@@ -112,41 +101,34 @@ async function handleInspectorSubmit(e) {
         'الهاتف': formData.get('phone').trim()
     };
 
-    // Validation
     if (!inspectorData['الاسم الكامل']) {
         showError('يرجى إدخال اسم المفتش');
         return;
     }
 
     showLoader();
-
     try {
         await submitInspector(inspectorData);
         inspectorForm.reset();
         showSuccess('تم إضافة المفتش بنجاح');
-
-        // Wait briefly for Google Sheets to update, then reload
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
         await loadInspectors();
-
     } catch (error) {
-        console.error('Error submitting inspector:', error);
         showError('حدث خطأ في حفظ البيانات');
     }
-
     hideLoader();
 }
 
-// ── Handle Search ─────────────────────────────────────────────
+// ── معالجة البحث ─────────────────────────────────────────────
 function handleSearch() {
     const nameQ = (searchNameInput?.value || '').toLowerCase().trim();
     const specQ = (searchSpecialtyInput?.value || '').toLowerCase().trim();
     const lvlQ = (searchLevelSelect?.value || '').trim();
 
     const filtered = allInspectors.filter(ins => {
-        const name = (ins['الاسم الكامل'] || '').toLowerCase();
-        const spec = (ins['التخصص'] || '').toLowerCase();
-        const lvl = (ins['المرحلة'] || '');
+        const name = String(ins['الاسم'] || ins['الاسم الكامل'] || '').toLowerCase();
+        const spec = String(ins['التخصص'] || '').toLowerCase();
+        const lvl = String(ins['المرحلة'] || ins['المرحلة التعليمية'] || '');
         return (!nameQ || name.includes(nameQ))
             && (!specQ || spec.includes(specQ))
             && (!lvlQ || lvl === lvlQ);
@@ -156,7 +138,6 @@ function handleSearch() {
     updateCount(filtered.length);
 }
 
-// ── Clear Search ──────────────────────────────────────────────
 function clearSearch() {
     if (searchNameInput) searchNameInput.value = '';
     if (searchSpecialtyInput) searchSpecialtyInput.value = '';
@@ -164,62 +145,44 @@ function clearSearch() {
     handleSearch();
 }
 
-// ── Update Count ──────────────────────────────────────────────
 function updateCount(count) {
-    if (inspectorCount) {
-        inspectorCount.textContent = `${count} مفتش`;
-    }
+    if (inspectorCount) inspectorCount.textContent = `${count} مفتش`;
 }
 
-// ── Populate Specialty Dropdown ───────────────────────────────
 function populateSpecialtyDropdown() {
     const specialtySelect = document.getElementById('inspSpecialty');
-    if (!specialtySelect) return;
-
+    if (!specialtySelect || typeof SPECIALTIES === 'undefined') return;
     SPECIALTIES.forEach(specialty => {
         const option = document.createElement('option');
-        option.value = specialty;
-        option.textContent = specialty;
+        option.value = specialty; option.textContent = specialty;
         specialtySelect.appendChild(option);
     });
 }
 
-// ── Populate Stage Dropdown ───────────────────────────────────
 function populateStageDropdown() {
     const stageSelect = document.getElementById('inspLevel');
-    if (!stageSelect) return;
-
+    if (!stageSelect || typeof LEVELS === 'undefined') return;
     LEVELS.forEach(level => {
         const option = document.createElement('option');
-        option.value = level;
-        option.textContent = level;
+        option.value = level; option.textContent = level;
         stageSelect.appendChild(option);
     });
 }
 
-// ── Populate Rank Dropdown ────────────────────────────────────
 function populateRankDropdown() {
     const rankSelect = document.getElementById('inspRank');
-    if (!rankSelect) return;
-
+    if (!rankSelect || typeof INSPECTOR_RANKS === 'undefined') return;
     INSPECTOR_RANKS.forEach(rank => {
         const option = document.createElement('option');
-        option.value = rank;
-        option.textContent = rank;
+        option.value = rank; option.textContent = rank;
         rankSelect.appendChild(option);
     });
 }
 
-// ── Initialize when DOM loaded ────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    requireAuth(['admin']); // Only admins can access
-
+    requireAuth(['admin']);
     populateSpecialtyDropdown();
     populateStageDropdown();
     populateRankDropdown();
-
     initInspectorsPage();
-
 });
-
-
