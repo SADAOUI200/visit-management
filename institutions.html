@@ -10,24 +10,20 @@
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* تحسينات بسيطة لأزرار الترقيم والإجراءات لضمان مظهر احترافي */
-        .pagination-wrapper { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 10px; flex-wrap: wrap; }
-        .pagination-wrapper button { min-width: 80px; }
-        .action-btns { display: flex; gap: 5px; justify-content: center; }
-        .btn-edit { background-color: #f59e0b !important; color: white !important; border: none; }
-        .btn-delete { background-color: #ef4444 !important; color: white !important; border: none; }
+        /* تنسيقات إضافية للأزرار الجديدة */
+        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; }
+        .action-btns { display: flex; gap: 4px; justify-content: center; }
+        .btn-edit { background-color: #f59e0b !important; color: white !important; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .btn-delete { background-color: #ef4444 !important; color: white !important; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .stats-badge { background: var(--accent-color); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.85rem; }
     </style>
 </head>
 
 <body>
-    <div class="loader-overlay" id="loaderOverlay">
-        <div class="spinner"></div>
-    </div>
+    <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
 
     <nav class="navbar">
-        <div class="brand">
-            <span>🏫</span> نظام إدارة الزيارات التفتيشية
-        </div>
+        <div class="brand"><span>🏫</span> نظام إدارة الزيارات التفتيشية</div>
         <div class="nav-links">
             <span class="user-info" id="navUserInfo"></span>
             <a href="dashboard.html" class="btn btn-ghost btn-sm">⚙️ لوحة التحكم</a>
@@ -48,8 +44,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="instMunicipality">البلدية</label>
-                        <select id="instMunicipality" name="municipality" required>
-                            </select>
+                        <select id="instMunicipality" name="municipality" required></select>
                     </div>
                     <div class="form-group">
                         <label for="instName">اسم المؤسسة</label>
@@ -57,8 +52,7 @@
                     </div>
                     <div class="form-group">
                         <label for="instLevel">المرحلة التعليمية</label>
-                        <select id="instLevel" name="level" required>
-                            </select>
+                        <select id="instLevel" name="level" required></select>
                     </div>
                     <div class="form-group">
                         <label for="instManager">مدير المؤسسة</label>
@@ -79,22 +73,16 @@
         <div class="card fade-in" style="margin-top: 2rem;">
             <div class="card-header-flex">
                 <div class="card-title">📋 قائمة المؤسسات المسجلة</div>
-                <div class="stats-badge" id="instCount">0 مؤسسة</div>
+                <div id="instCount" class="stats-badge">0 مؤسسة</div>
             </div>
 
             <div class="search-grid">
-                <div class="form-group">
-                    <input type="text" id="searchInstName" placeholder="🔍 بحث باسم المؤسسة..." />
-                </div>
-                <div class="form-group">
-                    <input type="text" id="searchInstMunicipality" placeholder="📍 بحث بالبلدية..." />
-                </div>
+                <div class="form-group"><input type="text" id="searchInstName" placeholder="🔍 بحث باسم المؤسسة..." /></div>
+                <div class="form-group"><input type="text" id="searchInstMunicipality" placeholder="📍 بحث بالبلدية..." /></div>
                 <div class="form-group">
                     <select id="searchInstLevel">
                         <option value="">-- كل المراحل --</option>
-                        <option>ابتدائي</option>
-                        <option>متوسط</option>
-                        <option>ثانوي</option>
+                        <option>ابتدائي</option><option>متوسط</option><option>ثانوي</option>
                     </select>
                 </div>
                 <div class="form-group" style="align-self:flex-end;">
@@ -103,7 +91,7 @@
             </div>
 
             <div class="table-wrap">
-                <table id="institutionsTable">
+                <table>
                     <thead>
                         <tr>
                             <th>#</th>
@@ -112,20 +100,15 @@
                             <th>المرحلة</th>
                             <th>مدير المؤسسة</th>
                             <th>المسيّر المالي</th>
-                            <th style="text-align: center;">الإجراءات</th>
+                            <th style="text-align:center">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="institutionsTableBody">
-                        <tr>
-                            <td colspan="7" class="empty-state">
-                                <span class="icon">⏳</span>جارٍ تحميل البيانات...
-                            </td>
-                        </tr>
+                        <tr><td colspan="7" class="empty-state">جارٍ تحميل البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
-
-            <div id="paginationControls" class="pagination-wrapper"></div>
+            <div id="paginationControls" class="pagination-container"></div>
         </div>
     </div>
 
