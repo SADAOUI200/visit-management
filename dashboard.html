@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم – نظام إدارة الزيارات</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>لوحة التحكم – نظام إدارة الزيارات التفتيشية</title>
+    <link rel="stylesheet" href="style.css" />
     <style>
-        /* تنسيق الأزرار الزاهية */
-        .btn-inspectors { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; }
-        .btn-institutions { color: #6366f1 !important; border: 1px solid #6366f1 !important; }
-        .btn-visits { color: #14b8a6 !important; border: 1px solid #14b8a6 !important; }
-        
+        /* استعادة الألوان الزاهية للأزرار */
+        .btn-inspectors { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; font-weight: bold; }
+        .btn-institutions { color: #6366f1 !important; border: 1px solid #6366f1 !important; font-weight: bold; }
+        .btn-visits { color: #14b8a6 !important; border: 1px solid #14b8a6 !important; font-weight: bold; }
+
         .level-stats {
             margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;
@@ -21,14 +22,15 @@
 
         .modal {
             display: none; position: fixed; z-index: 2000; left: 0; top: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
         }
         .modal-content {
-            background: #1e293b; margin: 5% auto; padding: 2rem; border-radius: 12px;
-            width: 90%; max-width: 450px; border: 1px solid rgba(255,255,255,0.1);
+            background: #1e293b; margin: 5% auto; padding: 2rem; border-radius: 16px;
+            width: 90%; max-width: 500px; border: 1px solid rgba(255,255,255,0.1);
         }
     </style>
 </head>
+
 <body>
     <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
 
@@ -45,27 +47,30 @@
 
     <div class="container">
         <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
-            <button class="btn btn-accent" onclick="document.getElementById('accountModal').style.display='block'">➕ إضافة حساب جديد</button>
+            <div>
+                <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
+                <p class="page-subtitle">إدارة النظام ومتابعة الإحصائيات</p>
+            </div>
+            <button class="btn btn-accent" onclick="document.getElementById('accountModal').style.display='block'">➕ إضافة حساب للشيت</button>
         </header>
 
         <div class="stats-grid">
             <div class="stat-card fade-in">
-                <div class="stat-icon" style="background: rgba(99,102,241,0.1); color:#6366f1;">🏢</div>
+                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
                     <div class="stat-value" id="count-inst">0</div>
                     <div class="stat-label">المؤسسات</div>
                 </div>
             </div>
             <div class="stat-card fade-in">
-                <div class="stat-icon" style="background: rgba(139,92,246,0.1); color:#8b5cf6;">🔍</div>
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
                     <div class="stat-value" id="count-insp">0</div>
                     <div class="stat-label">المفتشين</div>
                 </div>
             </div>
             <div class="stat-card fade-in">
-                <div class="stat-icon" style="background: rgba(20,184,166,0.1); color:#14b8a6;">📋</div>
+                <div class="stat-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">📋</div>
                 <div class="stat-info">
                     <div class="stat-value" id="count-visits">0</div>
                     <div class="stat-label">إجمالي الزيارات</div>
@@ -77,12 +82,30 @@
                 </div>
             </div>
         </div>
+
+        <div class="card fade-in">
+            <div class="card-title">👥 إدارة حسابات النظام الحالية</div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الاسم الكامل</th>
+                            <th>اسم المستخدم</th>
+                            <th>الصلاحية</th>
+                            <th style="text-align: center;">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div id="accountModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-bottom: 1rem; color: white;">👤 إضافة حساب لـ Google Sheets</h3>
-            <form id="gsForm">
+            <h3 style="color:white; margin-bottom:1.5rem;">👤 تسجيل حساب جديد في Google Sheets</h3>
+            <form id="gsAccountForm">
                 <div class="form-group"><label>الاسم الكامل</label><input type="text" id="fullName" required></div>
                 <div class="form-group"><label>اسم الدخول</label><input type="text" id="loginUser" required></div>
                 <div class="form-group"><label>كلمة المرور</label><input type="password" id="loginPass" required></div>
@@ -90,9 +113,9 @@
                     <label>الدور</label>
                     <select id="userRole"><option value="user">مستخدم</option><option value="admin">مدير</option></select>
                 </div>
-                <div class="form-actions" style="margin-top: 1rem;">
+                <div class="form-actions" style="margin-top:1.5rem;">
                     <button type="button" class="btn btn-ghost" onclick="document.getElementById('accountModal').style.display='none'">إلغاء</button>
-                    <button type="submit" class="btn btn-accent" id="submitBtn">حفظ في الشيت</button>
+                    <button type="submit" class="btn btn-accent" id="gsSubmitBtn">حفظ البيانات</button>
                 </div>
             </form>
         </div>
@@ -103,67 +126,99 @@
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCXs7AZFWk6b1LrKuI2uaQXqRJzwsVOg6MOifXdWjerUkydW9FGLwa_m1-AMGyqHfXnQ/exec";
 
-        // تحديث الإحصائيات من ملف الزيارات والبيانات
-        async function loadStats() {
+        // ── 1. جلب الإحصائيات (مباشرة من ملف الزيارات) ──────────────────
+        async function refreshDashboardStats() {
             try {
-                // جلب البيانات الفعلية
-                const insts = await fetchInstitutions(true);
-                const insps = await fetchInspectors(true);
-                const visits = await fetchVisits(true); // جلب من ملف الزيارات
+                // الانتظار قليلاً للتأكد من تحميل ملف data.js
+                if (typeof fetchInstitutions !== 'function') return;
+
+                const [insts, insps, visits] = await Promise.all([
+                    fetchInstitutions(true),
+                    fetchInspectors(true),
+                    fetchVisits(true)
+                ]);
 
                 document.getElementById('count-inst').innerText = insts.length;
                 document.getElementById('count-insp').innerText = insps.length;
                 document.getElementById('count-visits').innerText = visits.length;
 
-                let p=0, m=0, s=0;
+                let p = 0, m = 0, s = 0;
                 visits.forEach(v => {
                     const level = (v['المرحلة'] || v['level'] || '').trim();
-                    if(level === 'ابتدائي') p++;
-                    else if(level === 'متوسط') m++;
-                    else if(level === 'ثانوي') s++;
+                    if (level === 'ابتدائي') p++;
+                    else if (level === 'متوسط') m++;
+                    else if (level === 'ثانوي') s++;
                 });
                 document.getElementById('v-pri').innerText = p;
                 document.getElementById('v-mid').innerText = m;
                 document.getElementById('v-sec').innerText = s;
-            } catch (e) { console.error("Stats Error:", e); }
+            } catch (e) { console.error("Stats Load Error:", e); }
         }
 
-        // إرسال البيانات لـ Google Sheets
-        document.getElementById('gsForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerText = 'جاري الحفظ...';
+        // ── 2. عرض الحسابات (إدارة الحسابات) ──────────────────────────
+        function renderUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            if (typeof getUsers !== 'function') return;
+            const users = getUsers();
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td><strong>${u.name}</strong></td>
+                    <td><code>${u.username}</code></td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-accent' : ''}">${u.role === 'admin' ? 'مدير' : 'مستخدم'}</span></td>
+                    <td style="text-align: center;">
+                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}')" ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
 
-            // تجهيز البيانات بالأسماء المطلوبة
-            const formData = new FormData();
-            formData.append('الاسم الكامل', document.getElementById('fullName').value);
-            formData.append('اسم الدخول', document.getElementById('loginUser').value);
-            formData.append('كلمة المرور', document.getElementById('loginPass').value);
-            formData.append('الدور', document.getElementById('userRole').value);
-            formData.append('createdAt', new Date().toLocaleString('ar-DZ'));
-            formData.append('sheetName', 'accounts');
+        function handleDeleteUser(username) {
+            if (confirm('هل أنت متأكد من حذف هذا الحساب؟')) {
+                deleteUser(username);
+                renderUsers();
+            }
+        }
+
+        // ── 3. إرسال البيانات لـ Google Sheets ───────────────────────
+        document.getElementById('gsAccountForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('gsSubmitBtn');
+            btn.disabled = true;
+            btn.innerText = 'جاري الإرسال...';
+
+            const url = new URL(SCRIPT_URL);
+            const params = {
+                "الاسم الكامل": document.getElementById('fullName').value,
+                "اسم الدخول": document.getElementById('loginUser').value,
+                "كلمة المرور": document.getElementById('loginPass').value,
+                "الدور": document.getElementById('userRole').value,
+                "createdAt": new Date().toISOString(),
+                "sheetName": "accounts"
+            };
+
+            // نستخدم طريقة URLSearchParams لضمان وصول الحقول بالأسماء العربية لـ Apps Script
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
             try {
-                // استخدام وضع 'no-cors' مع FormData لضمان وصول البيانات لـ GAS
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: formData
-                });
-                
-                alert("✅ تم إرسال البيانات بنجاح إلى ملف الحسابات (accounts)");
+                // استخدام mode: 'no-cors' للالتفاف على قيود المتصفح مع جوجل سكريبت
+                await fetch(url, { method: 'POST', mode: 'no-cors' });
+                alert("✅ تم إرسال البيانات لملف accounts بنجاح");
                 document.getElementById('accountModal').style.display = 'none';
                 e.target.reset();
-            } catch (error) {
-                alert("❌ حدث خطأ في الاتصال");
+            } catch (err) {
+                alert("❌ حدث خطأ أثناء الاتصال بالخادم");
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'حفظ في الشيت';
+                btn.innerText = 'حفظ البيانات';
             }
         };
 
-        window.onload = loadStats;
+        // التشغيل عند التحميل
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof requireAuth === 'function') requireAuth(['admin']);
+            renderUsers();
+            refreshDashboardStats();
+        });
     </script>
 </body>
 </html>
