@@ -9,6 +9,24 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* تحسينات إحصائيات المراحل التعليمية */
+        .stat-details {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 2px;
+        }
+        .detail-label { color: var(--accent-color); font-weight: bold; }
+    </style>
 </head>
 
 <body>
@@ -37,22 +55,27 @@
             <div class="stat-card fade-in">
                 <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-institutions">0</div>
+                    <div class="stat-value" id="count-institutions">0</div>
                     <div class="stat-label">المؤسسات</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.1s;">
                 <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-inspectors">0</div>
+                    <div class="stat-value" id="count-inspectors">0</div>
                     <div class="stat-label">المفتشين</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.2s;">
                 <div class="stat-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">📋</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-visits">0</div>
+                    <div class="stat-value" id="count-visits">0</div>
                     <div class="stat-label">إجمالي الزيارات</div>
+                    <div id="visits-by-level" class="stat-details">
+                        <div class="detail-item"><span>ابتدائي:</span> <span id="v-primary" class="detail-label">0</span></div>
+                        <div class="detail-item"><span>متوسط:</span> <span id="v-middle" class="detail-label">0</span></div>
+                        <div class="detail-item"><span>ثانوي:</span> <span id="v-high" class="detail-label">0</span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -111,23 +134,40 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script>
-        // التحقق من الصلاحيات
+        // ── التحقق من الصلاحيات ─────────────────────────────────────────
         requireAuth(['admin']);
         updateUserInfo();
 
-        // ── وظيفة تحديث الإحصائيات الحية ───────────────────────────────────────
-        async function loadDashboardStats() {
+        // ── تحديث الإحصائيات الحية ───────────────────────────────────────
+        async function updateDashboardStats() {
             try {
-                // جلب البيانات من الدوال الموجودة في data.js
-                const insts = typeof fetchInstitutions === 'function' ? await fetchInstitutions(true) : [];
-                const insps = typeof fetchInspectors === 'function' ? await fetchInspectors(true) : [];
+                // جلب البيانات من ملف data.js
+                const institutions = typeof fetchInstitutions === 'function' ? await fetchInstitutions(true) : [];
+                const inspectors = typeof fetchInspectors === 'function' ? await fetchInspectors(true) : [];
                 const visits = typeof fetchVisits === 'function' ? await fetchVisits(true) : [];
 
-                document.getElementById('stat-institutions').textContent = insts.length;
-                document.getElementById('stat-inspectors').textContent = insps.length;
-                document.getElementById('stat-visits').textContent = visits.length;
-            } catch (e) {
-                console.error("خطأ في تحميل الإحصائيات:", e);
+                // تحديث الأعداد العامة
+                document.getElementById('count-institutions').textContent = institutions.length;
+                document.getElementById('count-inspectors').textContent = inspectors.length;
+                document.getElementById('count-visits').textContent = visits.length;
+
+                // حساب الزيارات حسب المرحلة التعليمية
+                let primary = 0, middle = 0, high = 0;
+                
+                visits.forEach(v => {
+                    const level = v['المرحلة'] || v['level'] || '';
+                    if (level === 'ابتدائي') primary++;
+                    else if (level === 'متوسط') middle++;
+                    else if (level === 'ثانوي') high++;
+                });
+
+                // تحديث الأرقام الفرعية
+                document.getElementById('v-primary').textContent = primary;
+                document.getElementById('v-middle').textContent = middle;
+                document.getElementById('v-high').textContent = high;
+
+            } catch (error) {
+                console.error("خطأ أثناء تحديث الإحصائيات:", error);
             }
         }
 
@@ -188,7 +228,7 @@
         // تشغيل الوظائف عند التحميل
         document.addEventListener('DOMContentLoaded', () => {
             renderUsers();
-            loadDashboardStats();
+            updateDashboardStats();
         });
     </script>
 </body>
