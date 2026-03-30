@@ -10,85 +10,78 @@
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* تنسيق إحصائيات المراحل داخل بطاقة الزيارات */
+        /* تنسيق إحصائيات المراحل */
         .level-stats {
-            margin-top: 10px;
+            margin-top: 12px;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 5px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
             border-top: 1px solid rgba(255,255,255,0.1);
-            padding-top: 8px;
+            padding-top: 10px;
         }
-        .level-item {
-            text-align: center;
-            font-size: 0.75rem;
+        .level-item { text-align: center; }
+        .level-count { display: block; font-weight: bold; color: #14b8a6; font-size: 1.1rem; }
+        .level-name { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* نافذة إضافة الحسابات (Modal) */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
         }
-        .level-count {
-            display: block;
-            font-weight: bold;
-            color: var(--accent-color, #14b8a6);
+        .modal-content {
+            background: var(--card-bg); margin: 10% auto; padding: 2rem;
+            border-radius: 16px; width: 90%; max-width: 500px; border: 1px solid rgba(255,255,255,0.1);
         }
-        .level-name { color: var(--text-muted); }
     </style>
 </head>
 
 <body>
-    <div class="loader-overlay" id="loaderOverlay">
-        <div class="spinner"></div>
-    </div>
+    <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
 
     <nav class="navbar">
-        <div class="brand">
-            <span>🏫</span> نظام إدارة الزيارات التفتيشية
-        </div>
+        <div class="brand"><span>🏫</span> نظام إدارة الزيارات التفتيشية</div>
         <div class="nav-links">
             <span class="user-info" id="navUserInfo"></span>
-            <a href="inspectors.html" class="btn btn-ghost btn-sm">🔍 المفتشين</a>
-            <a href="institutions.html" class="btn btn-ghost btn-sm">🏢 المؤسسات</a>
-            <a href="visit.html" class="btn btn-ghost btn-sm">📋 الزيارات</a>
+            <a href="inspectors.html" class="btn btn-ghost btn-sm" style="color: #8b5cf6;">🔍 المفتشين</a>
+            <a href="institutions.html" class="btn btn-ghost btn-sm" style="color: #6366f1;">🏢 المؤسسات</a>
+            <a href="visit.html" class="btn btn-ghost btn-sm" style="color: #14b8a6;">📋 الزيارات</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
         </div>
     </nav>
 
     <div class="container">
-        <header class="page-header">
-            <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
-            <p class="page-subtitle">إدارة النظام، حسابات المستخدمين ومتابعة الإحصائيات العامة</p>
+        <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
+                <p class="page-subtitle">إدارة النظام ومتابعة الإحصائيات</p>
+            </div>
+            <button class="btn btn-accent" onclick="openAccountModal()">➕ إضافة حساب جديد</button>
         </header>
 
         <div class="stats-grid">
-            <div class="stat-card fade-in">
+            <div class="stat-card fade-in" style="border-right: 4px solid #6366f1;">
                 <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="total-institutions">0</div>
+                    <div class="stat-value" id="stat-inst-total">0</div>
                     <div class="stat-label">المؤسسات</div>
                 </div>
             </div>
-            <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+            <div class="stat-card fade-in" style="border-right: 4px solid #8b5cf6;">
                 <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="total-inspectors">0</div>
+                    <div class="stat-value" id="stat-insp-total">0</div>
                     <div class="stat-label">المفتشين</div>
                 </div>
             </div>
-            <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+            <div class="stat-card fade-in" style="border-right: 4px solid #14b8a6;">
                 <div class="stat-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">📋</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="total-visits">0</div>
+                    <div class="stat-value" id="stat-visit-total">0</div>
                     <div class="stat-label">إجمالي الزيارات</div>
                     <div class="level-stats">
-                        <div class="level-item">
-                            <span class="level-count" id="count-primary">0</span>
-                            <span class="level-name">ابتدائي</span>
-                        </div>
-                        <div class="level-item">
-                            <span class="level-count" id="count-middle">0</span>
-                            <span class="level-name">متوسط</span>
-                        </div>
-                        <div class="level-item">
-                            <span class="level-count" id="count-high">0</span>
-                            <span class="level-name">ثانوي</span>
-                        </div>
+                        <div class="level-item"><span class="level-count" id="v-pri">0</span><span class="level-name">ابتدائي</span></div>
+                        <div class="level-item"><span class="level-count" id="v-mid">0</span><span class="level-name">متوسط</span></div>
+                        <div class="level-item"><span class="level-count" id="v-sec">0</span><span class="level-name">ثانوي</span></div>
                     </div>
                 </div>
             </div>
@@ -96,159 +89,99 @@
 
         <div class="grid-main">
             <div class="card fade-in">
-                <div class="card-title">👤 إنشاء حساب جديد</div>
-                <form id="createUserForm">
-                    <div class="form-group">
-                        <label for="name">الاسم الكامل</label>
-                        <input type="text" id="name" name="name" placeholder="أدخل الاسم الكامل..." required />
-                    </div>
-                    <div class="form-group">
-                        <label for="username">اسم المستخدم</label>
-                        <input type="text" id="username" name="username" placeholder="user123" required />
-                    </div>
-                    <div class="form-group">
-                        <label for="password">كلمة المرور</label>
-                        <input type="password" id="password" name="password" placeholder="••••••••" required />
-                    </div>
-                    <div class="form-group">
-                        <label for="role">الصلاحية</label>
-                        <select id="role" name="role" required>
-                            <option value="admin">مدير نظام (Admin)</option>
-                            <option value="user" selected>مستخدم عادي (User)</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-accent" id="createBtn" style="width: 100%;">
-                            ✅ إنشاء الحساب
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card fade-in">
-                <div class="card-title">👥 إدارة المستخدمين الحاليين</div>
+                <div class="card-title">👥 المستخدمين الحاليين</div>
                 <div class="table-wrap">
-                    <table id="usersTable">
-                        <thead>
-                            <tr>
-                                <th>الاسم</th>
-                                <th>اسم المستخدم</th>
-                                <th>الصلاحية</th>
-                                <th style="text-align: center;">إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTableBody">
-                            </tbody>
+                    <table>
+                        <thead><tr><th>الاسم</th><th>المستخدم</th><th>الصلاحية</th><th style="text-align: center;">إجراءات</th></tr></thead>
+                        <tbody id="usersTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <div class="card-title">👤 تسجيل حساب جديد في Google Sheets</div>
+            <form id="externalAccountForm">
+                <div class="form-group">
+                    <label>الاسم الكامل</label>
+                    <input type="text" name="extName" required placeholder="الاسم الثلاثي">
+                </div>
+                <div class="form-group">
+                    <label>اسم المستخدم</label>
+                    <input type="text" name="extUser" required placeholder="username">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" name="extPass" required placeholder="••••••••">
+                </div>
+                <div class="form-actions" style="margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeAccountModal()">إلغاء</button>
+                    <button type="submit" class="btn btn-accent">حفظ في Google Sheets</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script>
-        // التحقق من الصلاحيات وتحديث معلومات المستخدم
-        if (typeof requireAuth === 'function') requireAuth(['admin']);
-        if (typeof updateUserInfo === 'function') updateUserInfo();
+        requireAuth(['admin']);
+        updateUserInfo();
 
-        // ── جلب وتحديث الإحصائيات ───────────────────────────────────
-        async function refreshStats() {
+        // ── تحديث الإحصائيات ───────────────────
+        async function updateDashboard() {
             try {
-                // جلب البيانات الفعلية من الدوال في data.js
-                const institutions = typeof fetchInstitutions === 'function' ? await fetchInstitutions(true) : [];
-                const inspectors = typeof fetchInspectors === 'function' ? await fetchInspectors(true) : [];
-                const visits = typeof fetchVisits === 'function' ? await fetchVisits(true) : [];
+                const [insts, insps, visits] = await Promise.all([
+                    fetchInstitutions(true), fetchInspectors(true), fetchVisits(true)
+                ]);
 
-                // عرض الإجمالي العام
-                document.getElementById('total-institutions').innerText = institutions.length;
-                document.getElementById('total-inspectors').innerText = inspectors.length;
-                document.getElementById('total-visits').innerText = visits.length;
+                document.getElementById('stat-inst-total').textContent = insts.length;
+                document.getElementById('stat-insp-total').textContent = insps.length;
+                document.getElementById('stat-visit-total').textContent = visits.length;
 
-                // حساب المراحل التعليمية من مصفوفة الزيارات
-                let p = 0, m = 0, h = 0;
+                let p = 0, m = 0, s = 0;
                 visits.forEach(v => {
-                    const level = v['المرحلة'] || v['level'] || '';
-                    if (level === 'ابتدائي') p++;
-                    else if (level === 'متوسط') m++;
-                    else if (level === 'ثانوي') h++;
+                    const lvl = v['المرحلة'] || '';
+                    if (lvl === 'ابتدائي') p++;
+                    else if (lvl === 'متوسط') m++;
+                    else if (lvl === 'ثانوي') s++;
                 });
 
-                document.getElementById('count-primary').innerText = p;
-                document.getElementById('count-middle').innerText = m;
-                document.getElementById('count-high').innerText = h;
-
-            } catch (err) {
-                console.error("Dashboard Stats Error:", err);
-            }
+                document.getElementById('v-pri').textContent = p;
+                document.getElementById('v-mid').textContent = m;
+                document.getElementById('v-sec').textContent = s;
+            } catch (e) { console.error(e); }
         }
 
-        // ── إدارة المستخدمين (الوظائف الأصلية) ─────────────────────────
-        function renderUsers() {
-            const tableBody = document.getElementById('usersTableBody');
-            const users = typeof getUsers === 'function' ? getUsers() : [];
-            tableBody.innerHTML = '';
+        // ── إدارة الحسابات ───────────────────
+        function openAccountModal() { document.getElementById('accountModal').style.display = 'block'; }
+        function closeAccountModal() { document.getElementById('accountModal').style.display = 'none'; }
 
-            users.forEach(u => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+        function renderUsers() {
+            const body = document.getElementById('usersTableBody');
+            const users = getUsers();
+            body.innerHTML = users.map(u => `
+                <tr>
                     <td><strong>${u.name}</strong></td>
                     <td><code>${u.username}</code></td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-accent' : ''}">${u.role === 'admin' ? 'مدير' : 'مستخدم'}</span></td>
                     <td style="text-align: center;">
-                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}', '${u.name}')" 
-                                ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
+                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}')" ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
                     </td>
-                `;
-                tableBody.appendChild(tr);
-            });
+                </tr>
+            `).join('');
         }
 
-        window.handleDeleteUser = (username, name) => {
-            if (!confirm(`هل أنت متأكد من حذف حساب "${name}"؟`)) return;
-            if (typeof deleteUser === 'function') {
-                deleteUser(username);
-                renderUsers();
-                if (typeof showToast === 'function') showToast(`تمّ حذف حساب ${name}`, 'warning');
-            }
+        function handleDeleteUser(user) {
+            if (confirm('هل أنت متأكد؟')) { deleteUser(user); renderUsers(); showToast('تم الحذف', 'warning'); }
         }
 
-        document.getElementById('createUserForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = document.getElementById('createBtn');
-            const userData = {
-                name: form.name.value.trim(),
-                username: form.username.value.trim(),
-                password: form.password.value.trim(),
-                role: form.role.value
-            };
-
-            btn.disabled = true;
-            btn.textContent = 'جارٍ الإنشاء...';
-
-            setTimeout(() => {
-                if (typeof addUser === 'function') {
-                    const result = addUser(userData);
-                    if (result.ok) {
-                        if (typeof showToast === 'function') showToast(`✅ تمّ إنشاء حساب ${userData.name} بنجاح`);
-                        form.reset();
-                        renderUsers();
-                    } else {
-                        if (typeof showToast === 'function') showToast('❌ ' + result.msg, 'error');
-                    }
-                }
-                btn.disabled = false;
-                btn.innerHTML = '✅ إنشاء الحساب';
-            }, 300);
-        });
-
-        // تشغيل الوظائف عند التحميل
         document.addEventListener('DOMContentLoaded', () => {
             renderUsers();
-            refreshStats();
+            updateDashboard();
         });
     </script>
 </body>
-
 </html>
