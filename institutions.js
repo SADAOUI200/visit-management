@@ -3,16 +3,16 @@
  * institutions.js – Institutions Management Page Logic
  */
 
-// ── الإعدادات الثابتة ─────────────────────────────────────────────────
+// ── الثوابت ─────────────────────────────────────────────────
 const MUNICIPALITIES = [
-    'توقرت', 'النزلة', 'تبسبست', 'الزاوية العابدية', 'تماسين', 
-    'بلدة عمر', 'المنقر', 'الطيبات', 'بن ناصر', 'المقارين', 
-    'سيدي سليمان', 'الحجيرة', 'العالية'
+    'توقرت', 'النزلة', 'تبسبست', 'الزاوية العابدية',
+    'تماسين', 'بلدة عمر', 'المنقر', 'الطيبات',
+    'بن ناصر', 'المقارين', 'سيدي سليمان', 'الحجيرة', 'العالية'
 ];
 
 // ── عناصر واجهة المستخدم (DOM Elements) ──────────────────────────────
 const institutionForm = document.getElementById('institutionForm');
-const institutionTableBody = document.getElementById('institutionsTableBody'); // تصحيح المعرف ليطابق HTML
+const institutionsTableBody = document.getElementById('institutionsTableBody'); // تم التصحيح ليطابق HTML
 const instCount = document.getElementById('instCount');
 const searchNameInput = document.getElementById('searchInstName');
 const searchMunicipalityInput = document.getElementById('searchInstMunicipality');
@@ -25,10 +25,14 @@ let allInstitutions = [];
 async function initInstitutionsPage() {
     showLoader();
     try {
+        // ملء القوائم المنسدلة أولاً
         populateStageDropdown();
         populateMunicipalityDropdown();
+
+        // تحميل البيانات
         await loadInstitutions();
 
+        // إعداد المستمعات (Listeners)
         if (institutionForm) {
             institutionForm.addEventListener('submit', handleInstitutionSubmit);
         }
@@ -37,7 +41,9 @@ async function initInstitutionsPage() {
         if (searchMunicipalityInput) searchMunicipalityInput.addEventListener('input', handleSearch);
         if (searchLevelSelect) searchLevelSelect.addEventListener('change', handleSearch);
 
-        updateUserInfo();
+        // تحديث معلومات المستخدم (من app.js)
+        if (typeof updateUserInfo === 'function') updateUserInfo();
+        
     } catch (error) {
         console.error('Error initializing institutions page:', error);
     }
@@ -47,57 +53,86 @@ async function initInstitutionsPage() {
 // ── جلب بيانات المؤسسات ──────────────────────────────────────
 async function loadInstitutions() {
     try {
-        // تفريغ الكاش لضمان جلب بيانات جديدة
-        if (typeof _cache !== 'undefined') {
-            _cache.institutions = null;
-            _cache.institutionsTs = 0;
-        }
-        
+        // استدعاء الدالة من data.js مع تمرير true لتجاوز الكاش وضمان جلب البيانات
         allInstitutions = await fetchInstitutions(true);
         renderInstitutions(allInstitutions);
         updateCount(allInstitutions.length);
     } catch (error) {
         console.error('خطأ في تحميل المؤسسات:', error);
+        if (institutionsTableBody) {
+            institutionsTableBody.innerHTML = '<tr><td colspan="6" class="empty-state">حدث خطأ أثناء جلب البيانات</td></tr>';
+        }
     }
 }
 
-// ── عرض جدول المؤسسات ───────────────────────────────────
+// ── عرض الجدول ───────────────────────────────────
 function renderInstitutions(institutions) {
-    if (!institutionTableBody) return;
+    if (!institutionsTableBody) return;
 
-    institutionTableBody.innerHTML = '';
+    institutionsTableBody.innerHTML = '';
 
     if (!institutions || institutions.length === 0) {
-        institutionTableBody.innerHTML = `
+        institutionsTableBody.innerHTML = `
             <tr>
                 <td colspan="6" class="empty-state">
-                    <span class="icon">🔍</span>لا توجد مؤسسات مسجّلة بعد
+                    <span class="icon">🔍</span>لا توجد مؤسسات مسجّلة حالياً
                 </td>
             </tr>
         `;
         return;
     }
 
-    // دالة مساعدة لجلب القيم بمرونة (عربي/إنجليزي)
-    const g = (row, keys) => {
+    // دالة داخلية لجلب القيم بمرونة (عربي/إنجليزي) لتفادي أي تغيير في مسميات أعمدة الشيت
+    const getVal = (obj, keys) => {
         for (let key of keys) {
-            if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-                return String(row[key]);
-            }
+            if (obj[key] !== undefined && obj[key] !== null) return obj[key];
         }
         return '-';
     };
 
-    institutionTableBody.innerHTML = institutions.map((inst, i) => `
+    institutionsTableBody.innerHTML = institutions.map((inst, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td>${g(inst, ['البلدية', 'municipality'])}</td>
-            <td><strong>${g(inst, ['اسم المؤسسة', 'name', 'institutionName'])}</strong></td>
-            <td><span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399;">${g(inst, ['المرحلة', 'level', 'stage'])}</span></td>
-            <td>${g(inst, ['مدير المؤسسة', 'manager', 'director'])}</td>
-            <td style="color:var(--text-muted);">${g(inst, ['المسيّر المالي', 'financialManager'])}</td>
+            <td>${getVal(inst, ['البلدية', 'municipality'])}</td>
+            <td><strong>${getVal(inst, ['اسم المؤسسة', 'name', 'institutionName'])}</strong></td>
+            <td><span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399;">${getVal(inst, ['المرحلة', 'level', 'stage'])}</span></td>
+            <td>${getVal(inst, ['مدير المؤسسة', 'manager', 'director'])}</td>
+            <td style="color:var(--text-muted);">${getVal(inst, ['المسيّر المالي', 'financialManager'])}</td>
         </tr>
     `).join('');
+}
+
+// ── معالجة إرسال النموذج ────────────────────────────────────
+async function handleInstitutionSubmit(e) {
+    e.preventDefault();
+    const formData = new FormData(institutionForm);
+    
+    const institutionData = {
+        'البلدية': formData.get('municipality'),
+        'اسم المؤسسة': formData.get('name').trim(),
+        'المرحلة': formData.get('level'),
+        'مدير المؤسسة': formData.get('manager').trim(),
+        'المسيّر المالي': formData.get('financialManager').trim()
+    };
+
+    if (!institutionData['اسم المؤسسة']) {
+        if (typeof showToast === 'function') showToast('يرجى إدخال اسم المؤسسة', 'error');
+        return;
+    }
+
+    showLoader();
+    try {
+        // استدعاء دالة الإرسال من data.js
+        const res = await submitInstitution(institutionData);
+        if (res && res.ok) {
+            institutionForm.reset();
+            if (typeof showToast === 'function') showToast('✅ تم إضافة المؤسسة بنجاح');
+            await loadInstitutions(); // تحديث الجدول
+        }
+    } catch (error) {
+        console.error('Submit error:', error);
+    }
+    hideLoader();
 }
 
 // ── معالجة البحث ─────────────────────────────────────────────
@@ -109,7 +144,7 @@ function handleSearch() {
     const filtered = allInstitutions.filter(inst => {
         const name = String(inst['اسم المؤسسة'] || inst['name'] || '').toLowerCase();
         const mun = String(inst['البلدية'] || inst['municipality'] || '').toLowerCase();
-        const lvl = String(inst['المرحلة'] || inst['level'] || inst['stage'] || '');
+        const lvl = String(inst['المرحلة'] || inst['level'] || '');
         
         return (!nameQ || name.includes(nameQ))
             && (!munQ || mun.includes(munQ))
@@ -120,11 +155,19 @@ function handleSearch() {
     updateCount(filtered.length);
 }
 
-// ── وظائف أخرى ──────────────────────────────────────────────
+function clearInstSearch() {
+    if (searchNameInput) searchNameInput.value = '';
+    if (searchMunicipalityInput) searchMunicipalityInput.value = '';
+    if (searchLevelSelect) searchLevelSelect.value = '';
+    handleSearch();
+}
+
+// ── تحديث العداد ──────────────────────────────────────────────
 function updateCount(count) {
     if (instCount) instCount.textContent = `${count} مؤسسة`;
 }
 
+// ── ملء القوائم ───────────────────────────────────
 function populateStageDropdown() {
     const stageSelect = document.getElementById('instLevel');
     if (!stageSelect || typeof LEVELS === 'undefined') return;
@@ -147,14 +190,9 @@ function populateMunicipalityDropdown() {
     });
 }
 
-function clearInstSearch() {
-    if (searchNameInput) searchNameInput.value = '';
-    if (searchMunicipalityInput) searchMunicipalityInput.value = '';
-    if (searchLevelSelect) searchLevelSelect.value = '';
-    handleSearch();
-}
-
+// ── التشغيل عند تحميل المستند ────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    // التأكد من صلاحية الدخول (من app.js)
     if (typeof requireAuth === 'function') requireAuth(['admin']);
     initInstitutionsPage();
 });
