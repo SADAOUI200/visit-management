@@ -7,11 +7,12 @@
     <title>لوحة التحكم – نظام إدارة الزيارات التفتيشية</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* استعادة الألوان الزاهية للأزرار */
-        .btn-inspectors { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; font-weight: bold; }
-        .btn-institutions { color: #6366f1 !important; border: 1px solid #6366f1 !important; font-weight: bold; }
-        .btn-visits { color: #14b8a6 !important; border: 1px solid #14b8a6 !important; font-weight: bold; }
+        /* الألوان الزاهية للأزرار */
+        .btn-inspectors { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; }
+        .btn-institutions { color: #6366f1 !important; border: 1px solid #6366f1 !important; }
+        .btn-visits { color: #14b8a6 !important; border: 1px solid #14b8a6 !important; }
 
+        /* إحصائيات المراحل */
         .level-stats {
             margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;
@@ -49,7 +50,7 @@
         <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
-                <p class="page-subtitle">إدارة النظام ومتابعة الإحصائيات</p>
+                <p class="page-subtitle">إدارة الحسابات وإحصائيات الزيارات</p>
             </div>
             <button class="btn btn-accent" onclick="document.getElementById('accountModal').style.display='block'">➕ إضافة حساب للشيت</button>
         </header>
@@ -84,7 +85,7 @@
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">👥 إدارة حسابات النظام الحالية</div>
+            <div class="card-title">👥 حسابات النظام الحالية</div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -95,8 +96,7 @@
                             <th style="text-align: center;">إجراءات</th>
                         </tr>
                     </thead>
-                    <tbody id="usersTableBody">
-                        </tbody>
+                    <tbody id="usersTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -104,8 +104,8 @@
 
     <div id="accountModal" class="modal">
         <div class="modal-content">
-            <h3 style="color:white; margin-bottom:1.5rem;">👤 تسجيل حساب جديد في Google Sheets</h3>
-            <form id="gsAccountForm">
+            <h3 style="color:white; margin-bottom:1.5rem;">👤 تسجيل حساب جديد (Google Sheets)</h3>
+            <form id="gsForm">
                 <div class="form-group"><label>الاسم الكامل</label><input type="text" id="fullName" required></div>
                 <div class="form-group"><label>اسم الدخول</label><input type="text" id="loginUser" required></div>
                 <div class="form-group"><label>كلمة المرور</label><input type="password" id="loginPass" required></div>
@@ -115,7 +115,7 @@
                 </div>
                 <div class="form-actions" style="margin-top:1.5rem;">
                     <button type="button" class="btn btn-ghost" onclick="document.getElementById('accountModal').style.display='none'">إلغاء</button>
-                    <button type="submit" class="btn btn-accent" id="gsSubmitBtn">حفظ البيانات</button>
+                    <button type="submit" class="btn btn-accent" id="gsBtn">حفظ البيانات</button>
                 </div>
             </form>
         </div>
@@ -124,19 +124,14 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfOwcp4hQ3-E3C-QqluMrH408G3CUzI9GMRjopuWaPgldjpc3Opk9kpNqcnRQv-HIT-Q/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFYuFdSudyuoDEd5npce03XBJ1kNvGsi1tmxrISa-1N8T7XNClxs9P4QDtGzK53-_Uw/exec";
 
-        // ── 1. جلب الإحصائيات (مباشرة من ملف الزيارات) ──────────────────
-        async function refreshDashboardStats() {
+        // 1. جلب الإحصائيات ومعالجة عدد الزيارات حسب المرحلة
+        async function updateStats() {
             try {
-                // الانتظار قليلاً للتأكد من تحميل ملف data.js
-                if (typeof fetchInstitutions !== 'function') return;
-
-                const [insts, insps, visits] = await Promise.all([
-                    fetchInstitutions(true),
-                    fetchInspectors(true),
-                    fetchVisits(true)
-                ]);
+                const insts = await fetchInstitutions(true);
+                const insps = await fetchInspectors(true);
+                const visits = await fetchVisits(true);
 
                 document.getElementById('count-inst').innerText = insts.length;
                 document.getElementById('count-insp').innerText = insps.length;
@@ -144,80 +139,69 @@
 
                 let p = 0, m = 0, s = 0;
                 visits.forEach(v => {
-                    const level = (v['المرحلة'] || v['level'] || '').trim();
-                    if (level === 'ابتدائي') p++;
-                    else if (level === 'متوسط') m++;
-                    else if (level === 'ثانوي') s++;
+                    // فحص الحقل بالاسم العربي أو الإنجليزي
+                    const lvl = (v['المرحلة'] || v['level'] || '').trim();
+                    if (lvl === 'ابتدائي') p++;
+                    else if (lvl === 'متوسط') m++;
+                    else if (lvl === 'ثانوي') s++;
                 });
+
                 document.getElementById('v-pri').innerText = p;
                 document.getElementById('v-mid').innerText = m;
                 document.getElementById('v-sec').innerText = s;
-            } catch (e) { console.error("Stats Load Error:", e); }
+            } catch (e) { console.error("Stats Error:", e); }
         }
 
-        // ── 2. عرض الحسابات (إدارة الحسابات) ──────────────────────────
-        function renderUsers() {
-            const tbody = document.getElementById('usersTableBody');
-            if (typeof getUsers !== 'function') return;
+        // 2. عرض الحسابات المحلية
+        function showUsers() {
+            const body = document.getElementById('usersTableBody');
             const users = getUsers();
-            tbody.innerHTML = users.map(u => `
+            body.innerHTML = users.map(u => `
                 <tr>
                     <td><strong>${u.name}</strong></td>
                     <td><code>${u.username}</code></td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-accent' : ''}">${u.role === 'admin' ? 'مدير' : 'مستخدم'}</span></td>
                     <td style="text-align: center;">
-                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}')" ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
+                        <button class="btn btn-danger btn-sm" onclick="delUser('${u.username}')" ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function handleDeleteUser(username) {
-            if (confirm('هل أنت متأكد من حذف هذا الحساب؟')) {
-                deleteUser(username);
-                renderUsers();
-            }
-        }
+        window.delUser = (un) => { if(confirm('هل أنت متأكد؟')) { deleteUser(un); showUsers(); } }
 
-        // ── 3. إرسال البيانات لـ Google Sheets ───────────────────────
-        document.getElementById('gsAccountForm').onsubmit = async (e) => {
+        // 3. إرسال البيانات للرابط الجديد
+        document.getElementById('gsForm').onsubmit = async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('gsSubmitBtn');
-            btn.disabled = true;
-            btn.innerText = 'جاري الإرسال...';
+            const btn = document.getElementById('gsBtn');
+            btn.disabled = true; btn.innerText = 'جاري الإرسال...';
 
-            const url = new URL(SCRIPT_URL);
-            const params = {
+            const params = new URLSearchParams({
                 "الاسم الكامل": document.getElementById('fullName').value,
                 "اسم الدخول": document.getElementById('loginUser').value,
                 "كلمة المرور": document.getElementById('loginPass').value,
                 "الدور": document.getElementById('userRole').value,
-                "createdAt": new Date().toISOString(),
+                "createdAt": new Date().toLocaleString('ar-DZ'),
                 "sheetName": "accounts"
-            };
-
-            // نستخدم طريقة URLSearchParams لضمان وصول الحقول بالأسماء العربية لـ Apps Script
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            });
 
             try {
-                // استخدام mode: 'no-cors' للالتفاف على قيود المتصفح مع جوجل سكريبت
-                await fetch(url, { method: 'POST', mode: 'no-cors' });
-                alert("✅ تم إرسال البيانات لملف accounts بنجاح");
+                // استخدام POST مع mode: no-cors للتعامل مع Apps Script
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: params
+                });
+                alert("✅ تم إرسال البيانات بنجاح");
                 document.getElementById('accountModal').style.display = 'none';
                 e.target.reset();
-            } catch (err) {
-                alert("❌ حدث خطأ أثناء الاتصال بالخادم");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'حفظ البيانات';
-            }
+            } catch (err) { alert("❌ خطأ في الاتصال"); } 
+            finally { btn.disabled = false; btn.innerText = 'حفظ البيانات'; }
         };
 
-        // التشغيل عند التحميل
         window.addEventListener('DOMContentLoaded', () => {
-            if (typeof requireAuth === 'function') requireAuth(['admin']);
-            renderUsers();
-            refreshDashboardStats();
+            updateStats();
+            showUsers();
         });
     </script>
 </body>
