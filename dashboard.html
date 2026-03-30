@@ -5,19 +5,63 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>لوحة التحكم – نظام إدارة الزيارات التفتيشية</title>
-    <meta name="description" content="لوحة تحكم مدير النظام لإدارة الحسابات" />
+    <meta name="description" content="لوحة تحكم مدير النظام لإدارة الحسابات والإحصائيات" />
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        /* تحسينات إضافية لبطاقات الإحصائيات */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg, #1e293b);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .stat-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-info .stat-value {
+            display: block;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text, #f8fafc);
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-info .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted, #94a3b8);
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Loader -->
     <div class="loader-overlay" id="loaderOverlay">
         <div class="spinner"></div>
     </div>
 
-    <!-- Navbar -->
     <nav class="navbar">
         <div class="brand">
             <span>🏫</span> نظام إدارة الزيارات التفتيشية
@@ -30,200 +74,173 @@
     </nav>
 
     <div class="container">
-        <!-- Stats -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-icon blue">👤</div>
+        <header class="page-header">
+            <h1 class="page-title">⚙️ لوحة تحكم المدير</h1>
+            <p class="page-subtitle">إدارة النظام، حسابات المستخدمين ومتابعة الإحصائيات العامة</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card fade-in">
+                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
-                    <h3 id="statTotal">0</h3>
-                    <p>إجمالي الحسابات</p>
+                    <div class="stat-value" id="stat-institutions">0</div>
+                    <div class="stat-label">المؤسسات التعليمية</div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon amber">🔍</div>
+            <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
-                    <h3 id="statInspectors">0</h3>
-                    <p>المفتشون</p>
+                    <div class="stat-value" id="stat-inspectors">0</div>
+                    <div class="stat-label">المفتشون المسجلون</div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon green">🏢</div>
+            <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+                <div class="stat-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">📋</div>
                 <div class="stat-info">
-                    <h3 id="statManagers">0</h3>
-                    <p>المسيّرون</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:rgba(99,102,241,0.15);color:#a5b4fc;">🔍</div>
-                <div class="stat-info">
-                    <h3 id="statInspectorsSheet">…</h3>
-                    <p>مفتشون مسجّلون</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="background:rgba(16,185,129,0.15);color:#6ee7b7;">🏣</div>
-                <div class="stat-info">
-                    <h3 id="statInstitutionsSheet">…</h3>
-                    <p>مؤسسات مسجّلة</p>
+                    <div class="stat-value" id="stat-visits">0</div>
+                    <div class="stat-label">إجمالي الزيارات</div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="card fade-in" style="padding:1.25rem 1.5rem;">
-            <div class="card-title" style="margin-bottom:1rem;">⚡ إجراءات سريعة</div>
-            <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
-                <a href="inspectors.html" class="btn btn-accent" style="text-decoration:none;">
-                    🔍 إدارة المفتشين
-                </a>
-                <a href="institutions.html" class="btn btn-accent"
-                    style="text-decoration:none;background:linear-gradient(135deg,#10b981,#059669);">
-                    🏢 إدارة المؤسسات
-                </a>
-                <a href="visit.html" class="btn btn-ghost" style="text-decoration:none;">
-                    📋 سجل الزيارات
-                </a>
-            </div>
-        </div>
-
-        <!-- Create User Card -->
-        <div class="card fade-in">
-            <div class="card-title">➕ إنشاء حساب جديد</div>
-            <form id="createUserForm" novalidate>
-                <div class="form-grid">
+        <div class="grid-main">
+            <div class="card fade-in">
+                <div class="card-title">👤 إنشاء حساب جديد</div>
+                <form id="createUserForm">
                     <div class="form-group">
-                        <label for="newName">الاسم الكامل</label>
-                        <input type="text" id="newName" name="name" placeholder="اسم المستخدم الكامل" required />
+                        <label for="name">الاسم الكامل</label>
+                        <input type="text" id="name" name="name" placeholder="مثال: أحمد محمد" required />
                     </div>
                     <div class="form-group">
-                        <label for="newUsername">اسم الدخول</label>
-                        <input type="text" id="newUsername" name="username" placeholder="اسم تسجيل الدخول" required />
+                        <label for="username">اسم المستخدم</label>
+                        <input type="text" id="username" name="username" placeholder="user123" required />
                     </div>
                     <div class="form-group">
-                        <label for="newPassword">كلمة المرور</label>
-                        <input type="password" id="newPassword" name="password" placeholder="كلمة المرور" required />
+                        <label for="password">كلمة المرور</label>
+                        <input type="password" id="password" name="password" placeholder="••••••••" required />
                     </div>
                     <div class="form-group">
-                        <label for="newRole">الدور</label>
-                        <select id="newRole" name="role" required>
-                            <option value="">-- اختر الدور --</option>
-                            <option value="inspector">مفتش</option>
-                            <option value="manager">مسيّر</option>
+                        <label for="role">الصلاحية</label>
+                        <select id="role" name="role" required>
+                            <option value="admin">مدير نظام (Admin)</option>
+                            <option value="user" selected>مستخدم عادي (User)</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-actions">
-                    <button type="reset" class="btn btn-ghost">↺ إعادة تعيين</button>
-                    <button type="submit" class="btn btn-accent" id="createBtn">
-                        ✅ إنشاء الحساب
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Users Table Card -->
-        <div class="card fade-in">
-            <div class="card-title" style="justify-content:space-between;">
-                <span>👥 قائمة الحسابات</span>
-                <span id="usersCount" style="font-size:0.85rem;color:var(--text-muted);font-weight:400;"></span>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-accent" id="createBtn" style="width: 100%;">
+                            ✅ إنشاء الحساب
+                        </button>
+                    </div>
+                </form>
             </div>
-            <div class="table-wrap">
-                <table id="usersTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>الاسم الكامل</th>
-                            <th>اسم الدخول</th>
-                            <th>الدور</th>
-                            <th>تاريخ الإنشاء</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <tr>
-                            <td colspan="6" class="empty-state"><span class="icon">⏳</span>جارٍ التحميل...</td>
-                        </tr>
-                    </tbody>
-                </table>
+
+            <div class="card fade-in">
+                <div class="card-title">👥 إدارة المستخدمين الحاليين</div>
+                <div class="table-wrap">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>المستخدم</th>
+                                <th>الصلاحية</th>
+                                <th style="text-align: center;">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
     <script src="data.js"></script>
+    <script src="app.js"></script>
     <script>
-        // Auth guard – admin only
-        const session = requireAuth(['admin']);
-        if (!session) throw new Error('Not authenticated');
+        // ── التحقق من الصلاحيات ─────────────────────────────────────────
+        requireAuth(['admin']); 
+        updateUserInfo();
 
-        // Display user info in nav
-        document.getElementById('navUserInfo').innerHTML =
-            `مرحباً <strong>${session.name}</strong> &nbsp;|&nbsp; <span class="badge badge-admin">${roleLabel(session.role)}</span>`;
+        // ── تحديث الإحصائيات الحية ───────────────────────────────────────
+        async function loadDashboardStats() {
+            try {
+                const [insts, insps, visits] = await Promise.all([
+                    typeof fetchInstitutions === 'function' ? fetchInstitutions(true) : [],
+                    typeof fetchInspectors === 'function' ? fetchInspectors(true) : [],
+                    typeof fetchVisits === 'function' ? fetchVisits(true) : []
+                ]);
 
-        // ── Render Users Table ──────────────────────────────────────
-        function renderUsers() {
-            const users = getUsers();
-            const tbody = document.getElementById('usersTableBody');
-            const count = document.getElementById('usersCount');
-
-            // Stats
-            document.getElementById('statTotal').textContent = users.length;
-            document.getElementById('statInspectors').textContent = users.filter(u => u.role === 'inspector').length;
-            document.getElementById('statManagers').textContent = users.filter(u => u.role === 'manager').length;
-            count.textContent = users.length + ' حساب';
-
-            if (users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><span class="icon">👤</span>لا توجد حسابات بعد</td></tr>`;
-                return;
+                animateValue("stat-institutions", insts.length);
+                animateValue("stat-inspectors", insps.length);
+                animateValue("stat-visits", visits.length);
+            } catch (e) {
+                console.error("خطأ في تحميل الإحصائيات:", e);
             }
-
-            tbody.innerHTML = users.map((u, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${u.name}</td>
-          <td><code style="background:rgba(255,255,255,.05);padding:2px 6px;border-radius:6px;">${u.username}</code></td>
-          <td><span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
-          <td>${new Date(u.createdAt).toLocaleDateString('ar-DZ')}</td>
-          <td>
-            ${u.role !== 'admin' ? `
-              <button class="btn btn-danger btn-sm" onclick="handleDelete('${u.id}', '${u.name}')">
-                🗑️ حذف
-              </button>` : '<span style="color:var(--text-muted);font-size:0.82rem;">محمي</span>'}
-          </td>
-        </tr>
-      `).join('');
         }
 
-        // ── Delete User ─────────────────────────────────────────────
-        function handleDelete(id, name) {
-            if (!confirm(`هل تريد حذف حساب "${name}"؟`)) return;
-            deleteUser(id);
+        function animateValue(id, end) {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            let start = 0;
+            const duration = 800;
+            const range = end - start;
+            let startTime = null;
+
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = Math.min((timestamp - startTime) / duration, 1);
+                obj.innerText = Math.floor(progress * range + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            }
+            window.requestAnimationFrame(step);
+        }
+
+        // ── إدارة المستخدمين ───────────────────────────────────────────
+        function renderUsers() {
+            const tableBody = document.getElementById('usersTableBody');
+            const users = getUsers();
+            tableBody.innerHTML = '';
+
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${u.name}</strong></td>
+                    <td><code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;">${u.username}</code></td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-accent' : ''}">${u.role === 'admin' ? 'مدير' : 'مستخدم'}</span></td>
+                    <td style="text-align: center;">
+                        <button class="btn btn-danger btn-sm" onclick="handleDeleteUser('${u.username}', '${u.name}')" 
+                                ${u.username === 'admin' ? 'disabled' : ''}>حذف</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        window.handleDeleteUser = (username, name) => {
+            if (!confirm(`هل أنت متأكد من حذف حساب "${name}"؟`)) return;
+            deleteUser(username);
             renderUsers();
-            showToast(`تمّ حذف حساب ${name}`, 'warning');
+            showToast(`تم حذف حساب ${name}`, 'warning');
         }
 
-        // ── Create User Form ────────────────────────────────────────
         document.getElementById('createUserForm').addEventListener('submit', function (e) {
             e.preventDefault();
             const form = e.target;
             const btn = document.getElementById('createBtn');
-            const name = form.name.value.trim();
-            const username = form.username.value.trim();
-            const password = form.password.value.trim();
-            const role = form.role.value;
-
-            if (!name || !username || !password || !role) {
-                showToast('يرجى ملء جميع الحقول', 'error');
-                return;
-            }
+            const data = {
+                name: form.name.value.trim(),
+                username: form.username.value.trim(),
+                password: form.password.value.trim(),
+                role: form.role.value
+            };
 
             btn.disabled = true;
-            btn.textContent = 'جارٍ الإنشاء...';
+            btn.textContent = 'جارٍ المعالجة...';
 
             setTimeout(() => {
-                const result = addUser({ username, password, role, name });
+                const result = addUser(data);
                 if (result.ok) {
-                    showToast(`✅ تمّ إنشاء حساب ${name} بنجاح`);
+                    showToast(`✅ تم إنشاء حساب ${data.name}`);
                     form.reset();
                     renderUsers();
                 } else {
@@ -231,11 +248,14 @@
                 }
                 btn.disabled = false;
                 btn.innerHTML = '✅ إنشاء الحساب';
-            }, 300);
+            }, 400);
         });
 
-        // ── Init ────────────────────────────────────────────────────
-        renderUsers();
+        // ── تشغيل الوظائف عند التحميل ─────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            renderUsers();
+            loadDashboardStats();
+        });
     </script>
 </body>
 
