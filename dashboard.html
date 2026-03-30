@@ -10,22 +10,25 @@
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* تحسينات إحصائيات المراحل التعليمية */
-        .stat-details {
+        /* تنسيق إحصائيات المراحل داخل بطاقة الزيارات */
+        .level-stats {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 8px;
+        }
+        .level-item {
+            text-align: center;
             font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 5px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
         }
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding-bottom: 2px;
+        .level-count {
+            display: block;
+            font-weight: bold;
+            color: var(--accent-color, #14b8a6);
         }
-        .detail-label { color: var(--accent-color); font-weight: bold; }
+        .level-name { color: var(--text-muted); }
     </style>
 </head>
 
@@ -40,7 +43,9 @@
         </div>
         <div class="nav-links">
             <span class="user-info" id="navUserInfo"></span>
-            <a href="visit.html" class="btn btn-ghost btn-sm">📋 سجل الزيارات</a>
+            <a href="inspectors.html" class="btn btn-ghost btn-sm">🔍 المفتشين</a>
+            <a href="institutions.html" class="btn btn-ghost btn-sm">🏢 المؤسسات</a>
+            <a href="visit.html" class="btn btn-ghost btn-sm">📋 الزيارات</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
         </div>
     </nav>
@@ -55,26 +60,35 @@
             <div class="stat-card fade-in">
                 <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">🏢</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="count-institutions">0</div>
+                    <div class="stat-value" id="total-institutions">0</div>
                     <div class="stat-label">المؤسسات</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.1s;">
                 <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">🔍</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="count-inspectors">0</div>
+                    <div class="stat-value" id="total-inspectors">0</div>
                     <div class="stat-label">المفتشين</div>
                 </div>
             </div>
             <div class="stat-card fade-in" style="animation-delay: 0.2s;">
                 <div class="stat-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">📋</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="count-visits">0</div>
+                    <div class="stat-value" id="total-visits">0</div>
                     <div class="stat-label">إجمالي الزيارات</div>
-                    <div id="visits-by-level" class="stat-details">
-                        <div class="detail-item"><span>ابتدائي:</span> <span id="v-primary" class="detail-label">0</span></div>
-                        <div class="detail-item"><span>متوسط:</span> <span id="v-middle" class="detail-label">0</span></div>
-                        <div class="detail-item"><span>ثانوي:</span> <span id="v-high" class="detail-label">0</span></div>
+                    <div class="level-stats">
+                        <div class="level-item">
+                            <span class="level-count" id="count-primary">0</span>
+                            <span class="level-name">ابتدائي</span>
+                        </div>
+                        <div class="level-item">
+                            <span class="level-count" id="count-middle">0</span>
+                            <span class="level-name">متوسط</span>
+                        </div>
+                        <div class="level-item">
+                            <span class="level-count" id="count-high">0</span>
+                            <span class="level-name">ثانوي</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -134,47 +148,45 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
     <script>
-        // ── التحقق من الصلاحيات ─────────────────────────────────────────
-        requireAuth(['admin']);
-        updateUserInfo();
+        // التحقق من الصلاحيات وتحديث معلومات المستخدم
+        if (typeof requireAuth === 'function') requireAuth(['admin']);
+        if (typeof updateUserInfo === 'function') updateUserInfo();
 
-        // ── تحديث الإحصائيات الحية ───────────────────────────────────────
-        async function updateDashboardStats() {
+        // ── جلب وتحديث الإحصائيات ───────────────────────────────────
+        async function refreshStats() {
             try {
-                // جلب البيانات من ملف data.js
+                // جلب البيانات الفعلية من الدوال في data.js
                 const institutions = typeof fetchInstitutions === 'function' ? await fetchInstitutions(true) : [];
                 const inspectors = typeof fetchInspectors === 'function' ? await fetchInspectors(true) : [];
                 const visits = typeof fetchVisits === 'function' ? await fetchVisits(true) : [];
 
-                // تحديث الأعداد العامة
-                document.getElementById('count-institutions').textContent = institutions.length;
-                document.getElementById('count-inspectors').textContent = inspectors.length;
-                document.getElementById('count-visits').textContent = visits.length;
+                // عرض الإجمالي العام
+                document.getElementById('total-institutions').innerText = institutions.length;
+                document.getElementById('total-inspectors').innerText = inspectors.length;
+                document.getElementById('total-visits').innerText = visits.length;
 
-                // حساب الزيارات حسب المرحلة التعليمية
-                let primary = 0, middle = 0, high = 0;
-                
+                // حساب المراحل التعليمية من مصفوفة الزيارات
+                let p = 0, m = 0, h = 0;
                 visits.forEach(v => {
                     const level = v['المرحلة'] || v['level'] || '';
-                    if (level === 'ابتدائي') primary++;
-                    else if (level === 'متوسط') middle++;
-                    else if (level === 'ثانوي') high++;
+                    if (level === 'ابتدائي') p++;
+                    else if (level === 'متوسط') m++;
+                    else if (level === 'ثانوي') h++;
                 });
 
-                // تحديث الأرقام الفرعية
-                document.getElementById('v-primary').textContent = primary;
-                document.getElementById('v-middle').textContent = middle;
-                document.getElementById('v-high').textContent = high;
+                document.getElementById('count-primary').innerText = p;
+                document.getElementById('count-middle').innerText = m;
+                document.getElementById('count-high').innerText = h;
 
-            } catch (error) {
-                console.error("خطأ أثناء تحديث الإحصائيات:", error);
+            } catch (err) {
+                console.error("Dashboard Stats Error:", err);
             }
         }
 
-        // ── إدارة المستخدمين ───────────────────────────────────────────
+        // ── إدارة المستخدمين (الوظائف الأصلية) ─────────────────────────
         function renderUsers() {
             const tableBody = document.getElementById('usersTableBody');
-            const users = getUsers();
+            const users = typeof getUsers === 'function' ? getUsers() : [];
             tableBody.innerHTML = '';
 
             users.forEach(u => {
@@ -194,31 +206,37 @@
 
         window.handleDeleteUser = (username, name) => {
             if (!confirm(`هل أنت متأكد من حذف حساب "${name}"؟`)) return;
-            deleteUser(username);
-            renderUsers();
-            showToast(`تمّ حذف حساب ${name}`, 'warning');
+            if (typeof deleteUser === 'function') {
+                deleteUser(username);
+                renderUsers();
+                if (typeof showToast === 'function') showToast(`تمّ حذف حساب ${name}`, 'warning');
+            }
         }
 
         document.getElementById('createUserForm').addEventListener('submit', function (e) {
             e.preventDefault();
             const form = e.target;
             const btn = document.getElementById('createBtn');
-            const name = form.name.value.trim();
-            const username = form.username.value.trim();
-            const password = form.password.value.trim();
-            const role = form.role.value;
+            const userData = {
+                name: form.name.value.trim(),
+                username: form.username.value.trim(),
+                password: form.password.value.trim(),
+                role: form.role.value
+            };
 
             btn.disabled = true;
             btn.textContent = 'جارٍ الإنشاء...';
 
             setTimeout(() => {
-                const result = addUser({ username, password, role, name });
-                if (result.ok) {
-                    showToast(`✅ تمّ إنشاء حساب ${name} بنجاح`);
-                    form.reset();
-                    renderUsers();
-                } else {
-                    showToast('❌ ' + result.msg, 'error');
+                if (typeof addUser === 'function') {
+                    const result = addUser(userData);
+                    if (result.ok) {
+                        if (typeof showToast === 'function') showToast(`✅ تمّ إنشاء حساب ${userData.name} بنجاح`);
+                        form.reset();
+                        renderUsers();
+                    } else {
+                        if (typeof showToast === 'function') showToast('❌ ' + result.msg, 'error');
+                    }
                 }
                 btn.disabled = false;
                 btn.innerHTML = '✅ إنشاء الحساب';
@@ -228,7 +246,7 @@
         // تشغيل الوظائف عند التحميل
         document.addEventListener('DOMContentLoaded', () => {
             renderUsers();
-            updateDashboardStats();
+            refreshStats();
         });
     </script>
 </body>
