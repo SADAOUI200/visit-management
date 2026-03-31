@@ -10,8 +10,8 @@
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         .search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
         #specialty { background-color: #f9fafb; font-weight: bold; color: #111827; }
-        /* زر لوحة التحكم في النافبار */
-        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; margin-left: 10px; }
+        /* تنسيق زر العودة للوحة التحكم */
+        .btn-dashboard { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -21,14 +21,14 @@
         <div class="brand">🏫 مصلحة التفتيش - إدارة الزيارات</div>
         <div class="nav-links">
             <span id="navUserInfo"></span>
-            <a href="dashboard.html" class="btn btn-ghost btn-sm btn-dash">⚙️ لوحة التحكم</a>
+            <a href="dashboard.html" class="btn btn-ghost btn-sm btn-dashboard">⚙️ لوحة التحكم</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج</button>
         </div>
     </nav>
 
     <div class="container">
         <div class="card fade-in">
-            <div class="card-title">✏️ تسجيل زيارة جديدة وإرسالها للشيت</div>
+            <div class="card-title">✏️ تسجيل زيارة جديدة (حفظ محلي وإرسال للشيت)</div>
             <form id="visitForm">
                 <div class="form-grid">
                     <div class="form-group">
@@ -107,8 +107,8 @@
                     <thead>
                         <tr>
                             <th>#</th><th>المعرف</th><th>التاريخ</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
-                            <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>تاريخ الزيارة</th>
-                            <th>النوع</th><th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
+                            <th>المعني</th><th>المؤسسة</th><th>تاريخ الزيارة</th>
+                            <th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
                         </tr>
                     </thead>
                     <tbody id="visitsTableBody"></tbody>
@@ -118,9 +118,13 @@
         </div>
     </div>
 
-    <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
+    <script src="app.js"></script>
+    <script src="data.js"></script>
+    <script src="visit.js"></script>
     <script>
+        // رابط النشر الخاص بك
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFYuFdSudyuoDEd5npce03XBJ1kNvGsi1tmxrISa-1N8T7XNClxs9P4QDtGzK53-_Uw/exec";
+
         let _institutionsList = [];
         let _inspectorsList = [];
 
@@ -129,10 +133,12 @@
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
 
+            // تعبئة البلديات
             const MUNICIPALITIES = ['توقرت','النزلة','تبسبست','الزاوية العابدية','تماسين','بلدة عمر','الطيبات','المنقر','بن ناصر','المقارين','سيدي سليمان','الحجيرة','العالية'];
             const munSel = document.getElementById('municipalitySelect');
             MUNICIPALITIES.sort().forEach(m => munSel.add(new Option(m, m)));
 
+            // جلب البيانات الأولية
             async function initData() {
                 showLoader();
                 try {
@@ -148,18 +154,21 @@
             }
 
             await initData();
-            await loadVisits();
+            await loadVisits(); // دالة موجودة في visit.js
 
             const stageSel = document.getElementById('stageSelect');
+            const munSel_el = document.getElementById('municipalitySelect');
             const insSel = document.getElementById('inspectorSelect');
             const instSel = document.getElementById('institutionSelect');
 
             function filterDropdowns() {
                 const stage = stageSel.value;
-                const mun = munSel.value;
+                const mun = munSel_el.value;
+                
                 insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
                 _inspectorsList.filter(i => i['المرحلة'] === stage).forEach(i => insSel.add(new Option(i['الاسم'], i['الاسم'])));
                 insSel.disabled = false;
+
                 if (stage && mun) {
                     instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
                     const filtered = _institutionsList.filter(i => (i['المرحلة'] || '').trim() === stage && (i['البلدية'] || '').trim() === mun);
@@ -169,21 +178,20 @@
             }
 
             stageSel.addEventListener('change', filterDropdowns);
-            munSel.addEventListener('change', filterDropdowns);
+            munSel_el.addEventListener('change', filterDropdowns);
             insSel.addEventListener('change', () => {
                 const insp = _inspectorsList.find(i => i['الاسم'] === insSel.value);
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             });
 
-            // معالجة الإرسال الموحد (محلياً + جوجل شيت)
+            // ── معالجة الإرسال لـ Google Sheets ────────────────
             document.getElementById('visitForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true;
-                btn.innerText = 'جاري الحفظ والإرسال...';
+                btn.innerText = 'جاري الإرسال للشيت...';
 
-                // 1. الإرسال لجوجل شيت
-                const params = new URLSearchParams({
+                const formData = {
                     "المرحلة": document.getElementById('stageSelect').value,
                     "البلدية": document.getElementById('municipalitySelect').value,
                     "المؤسسة": document.getElementById('institutionSelect').value,
@@ -196,21 +204,28 @@
                     "النقطة": document.getElementById('score').value,
                     "الموسم": document.getElementById('season').value,
                     "sheetName": "visits"
-                });
+                };
+
+                const queryString = new URLSearchParams(formData).toString();
 
                 try {
-                    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: params });
-                    
-                    // 2. التنفيذ المحلي (الدالة الأصلية في visit.js)
-                    if(typeof handleVisitSubmit === 'function') {
+                    // الإرسال الفعلي لـ Google Sheets
+                    await fetch(`${SCRIPT_URL}?${queryString}`, {
+                        method: 'POST',
+                        mode: 'no-cors'
+                    });
+
+                    // التنفيذ المحلي (لإضافة الزيارة للجدول في الصفحة)
+                    if (typeof handleVisitSubmit === 'function') {
                         await handleVisitSubmit(e);
                     }
-                    
-                    alert("✅ تم تسجيل الزيارة بنجاح في النظام وفي Google Sheets");
+
+                    alert("✅ تم الحفظ بنجاح وإرسال البيانات للشيت");
                     this.reset();
                     document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
                 } catch (err) {
-                    alert("❌ حدث خطأ أثناء الإرسال للشيت");
+                    console.error(err);
+                    alert("❌ حدث خطأ أثناء الإرسال السحابي");
                 } finally {
                     btn.disabled = false;
                     btn.innerText = '📥 حفظ وإرسال للشيت';
