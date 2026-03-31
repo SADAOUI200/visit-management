@@ -1,9 +1,7 @@
 /**
  * نظام إدارة الزيارات التفتيشية - المطور: سعداوي زين العابدين
- * نسخة معالجة لتعطل الوظائف - 2026
  */
 
-// الرابط المباشر والنهائي الذي قدمته
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_S2kmEp4M2cDBb5RIkNwhSJroFGQpgKsm7rInYqqIblGzex5zzR5xUN2dhEU7eFLR/exec';
 
 const FIELD_NAMES = [
@@ -19,25 +17,21 @@ let columnMapping = {};
 let currentPage = 1;
 const rowsPerPage = 10;
 
-// دالة توليد المعرف
 function generateId() {
     return 'VIS-' + Date.now().toString(36).toUpperCase();
 }
 
-// دالة تنسيق التاريخ
 function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
     return isNaN(d) ? val : d.toISOString().split('T')[0];
 }
 
-// دالة جلب قيمة الحقل بأمان
 function getField(row, fieldName) {
     const actualKey = columnMapping[fieldName] || fieldName;
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-// بناء خريطة الأعمدة لتجنب أخطاء الترتيب في الشيت
 function buildMapping(firstRow) {
     const mapping = {};
     const actualKeys = Object.keys(firstRow || {});
@@ -48,30 +42,31 @@ function buildMapping(firstRow) {
     return mapping;
 }
 
-// ── 1. جلب البيانات (عرض الجدول) ──
+// ── جلب البيانات وعرضها في الجدول ──
 async function loadVisits() {
-    if (typeof showLoader === 'function') showLoader();
+    if (window.showLoader) showLoader();
     try {
-        const response = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits`);
-        const data = await response.json();
-        
+        // إضافة parameter لمنع التخزين المؤقت (Cache)
+        const res = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits&_=${Date.now()}`);
+        const data = await res.json();
         allVisits = Array.isArray(data) ? data : (data.data || []);
-        if (allVisits.length > 0) columnMapping = buildMapping(allVisits[0]);
         
-        applySearch(); // لتحديث العرض
+        if (allVisits.length > 0) {
+            columnMapping = buildMapping(allVisits[0]);
+        }
+        applySearch();
     } catch (err) {
-        console.error("خطأ في جلب البيانات:", err);
+        console.error("خطأ في الجلب:", err);
     }
-    if (typeof hideLoader === 'function') hideLoader();
+    if (window.hideLoader) hideLoader();
 }
 
-// ── 2. رسم الجدول ──
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد بيانات حالياً</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد سجلات حالياً</td></tr>';
         return;
     }
 
@@ -97,20 +92,18 @@ function renderTable(visits) {
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td>
                 <div class="action-btns">
-                    <button class="btn btn-sm btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
-                    <button class="btn btn-sm btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
+                    <button class="btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
+                    <button class="btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
                 </div>
             </td>
         </tr>
     `).join('');
-    
     updatePaginationControls(visits.length);
 }
 
-// ── 3. حفظ البيانات (إضافة/تعديل) ──
+// ── حفظ البيانات (إضافة وتعديل) ──
 async function handleVisitSubmit(e) {
     e.preventDefault();
-    const form = e.target;
     const editId = document.getElementById('editId').value;
     const isEdit = !!editId;
 
@@ -134,67 +127,32 @@ async function handleVisitSubmit(e) {
         'الموسم الدراسي': document.getElementById('season').value
     };
 
-    if (typeof showLoader === 'function') showLoader();
+    if (window.showLoader) showLoader();
     try {
         const params = new URLSearchParams(visitData).toString();
-        // إرسال كـ GET لضمان وصول المعاملات بنجاح تام مع Apps Script
-        await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
+        // استخدام POST مع المعاملات لضمان الحفظ
+        await fetch(`${SCRIPT_URL}?${params}`, { 
+            method: 'POST', 
+            mode: 'no-cors' 
+        });
         
         alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
         resetForm();
         await loadVisits();
     } catch (err) {
-        alert('❌ فشل في العملية');
+        alert('❌ فشل في الاتصال');
     }
-    if (typeof hideLoader === 'function') hideLoader();
+    if (window.hideLoader) hideLoader();
 }
 
-// ── 4. التعديل والحذف ──
-function editVisit(id) {
-    const v = allVisits.find(visit => getField(visit, 'المعرف') === id);
-    if (!v) return;
-
-    document.getElementById('editId').value = getField(v, 'المعرف');
-    document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
-    document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
-    document.getElementById('score').value = getField(v, 'النقطة');
-    document.getElementById('rank').value = getField(v, 'الرتبة');
-    document.getElementById('grade').value = getField(v, 'الدرجة');
-    document.getElementById('inspectorSelect').value = getField(v, 'اسم المفتش');
-    document.getElementById('specialty').value = getField(v, 'التخصص');
-    document.getElementById('institutionSelect').innerHTML = `<option value="${getField(v, 'المؤسسة')}">${getField(v, 'المؤسسة')}</option>`;
-    
-    document.getElementById('formTitle').innerText = '📝 تعديل سجل زيارة';
-    document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
-    document.getElementById('cancelBtn').style.display = 'inline-block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function deleteVisit(id) {
-    if (!confirm('حذف نهائي؟')) return;
-    if (typeof showLoader === 'function') showLoader();
-    try {
-        await fetch(`${SCRIPT_URL}?action=delete&id=${id}&sheetName=visits`, { method: 'POST', mode: 'no-cors' });
-        alert('✅ تم الحذف');
-        await loadVisits();
-    } catch (err) { console.error(err); }
-    if (typeof hideLoader === 'function') hideLoader();
-}
-
-// ── 5. البحث والترقيم ──
 function applySearch() {
-    const nameQuery = (document.getElementById('searchName')?.value || '').toLowerCase();
+    const q = (document.getElementById('searchName')?.value || '').toLowerCase();
     filteredVisits = allVisits.filter(v => 
-        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(nameQuery) ||
-        String(getField(v, 'المؤسسة')).toLowerCase().includes(nameQuery)
+        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(q) ||
+        String(getField(v, 'المؤسسة')).toLowerCase().includes(q)
     );
+    currentPage = 1;
     renderTable(filteredVisits);
-}
-
-function updatePaginationControls(total) {
-    const pages = Math.ceil(total / rowsPerPage);
-    const container = document.getElementById('paginationControls');
-    if (container) container.innerHTML = `صفحة ${currentPage} من ${pages || 1}`;
 }
 
 function resetForm() {
@@ -202,5 +160,10 @@ function resetForm() {
     document.getElementById('editId').value = '';
     document.getElementById('formTitle').innerText = '✏️ تسجيل زيارة جديدة';
     document.getElementById('submitBtn').innerText = '📥 حفظ البيانات';
-    document.getElementById('cancelBtn').style.display = 'none';
+}
+
+function updatePaginationControls(total) {
+    const pages = Math.ceil(total / rowsPerPage);
+    const container = document.getElementById('paginationControls');
+    if (container) container.innerHTML = `صفحة ${currentPage} من ${pages || 1}`;
 }
