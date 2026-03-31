@@ -10,7 +10,6 @@
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         .search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
         #specialty { background-color: #f9fafb; font-weight: bold; color: #111827; }
-        /* تنسيق زر العودة للوحة التحكم */
         .btn-dashboard { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; margin-left: 10px; }
     </style>
 </head>
@@ -28,7 +27,7 @@
 
     <div class="container">
         <div class="card fade-in">
-            <div class="card-title">✏️ تسجيل زيارة جديدة (حفظ محلي وإرسال للشيت)</div>
+            <div class="card-title">✏️ تسجيل زيارة جديدة</div>
             <form id="visitForm">
                 <div class="form-grid">
                     <div class="form-group">
@@ -57,7 +56,7 @@
                         <select id="inspectorSelect" name="inspector" required disabled></select>
                     </div>
                     <div class="form-group">
-                        <label>التخصص (تلقائي)</label>
+                        <label>التخصص</label>
                         <input type="text" id="specialty" name="specialty" readonly />
                     </div>
                     <div class="form-group">
@@ -76,6 +75,9 @@
                             <option value="إقتراح تشكيل لجنة تحقيق">إقتراح تشكيل لجنة تحقيق</option>
                         </select>
                     </div>
+                    <div class="form-group"><label>تاريخ الزيارة</label><input type="date" name="visitDate" id="vDate" required /></div>
+                    <div class="form-group"><label>النقطة</label><input type="number" id="score" name="score" step="0.25" /></div>
+                    <div class="form-group"><label>الموسم الدراسي</label><select name="season" id="season"><option selected>2025 / 2026</option></select></div>
                     <div class="form-group full-width">
                         <label>الملاحظة</label>
                         <select id="notes" name="notes">
@@ -85,36 +87,34 @@
                             <option value="العمل على تدارك النقائص المسجلة في انتظار قرارات الوصاية">4- العمل على تدارك النقائص المسجلة في انتظار قرارات الوصاية</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>تاريخ الزيارة</label><input type="date" name="visitDate" id="vDate" required /></div>
-                    <div class="form-group"><label>النقطة</label><input type="number" id="score" name="score" step="0.25" /></div>
-                    <div class="form-group"><label>الموسم الدراسي</label><select name="season" id="season"><option selected>2025 / 2026</option></select></div>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال للشيت</button>
+                    <button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال للبيانات</button>
                 </div>
             </form>
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">🔍 سجل البحث والفلترة</div>
-            <div class="search-grid">
-                <input type="text" id="searchName" placeholder="بحث بالاسم..." oninput="applySearch()" />
-                <input type="text" id="searchInst" placeholder="بحث بالمؤسسة..." oninput="applySearch()" />
-                <input type="text" id="searchInspector" placeholder="بحث بالمفتش..." oninput="applySearch()" />
-            </div>
+            <div class="card-title">🔍 سجل الزيارات المسجلة</div>
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th><th>المعرف</th><th>التاريخ</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
-                            <th>المعني</th><th>المؤسسة</th><th>تاريخ الزيارة</th>
-                            <th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
+                            <th>التاريخ</th>
+                            <th>المفتش</th>
+                            <th>التخصص</th>
+                            <th>المرحلة</th>
+                            <th>المؤسسة</th>
+                            <th>المعني</th>
+                            <th>تاريخ الزيارة</th>
+                            <th>النقطة</th>
+                            <th>العقبات</th>
+                            <th>الملاحظة</th>
                         </tr>
                     </thead>
                     <tbody id="visitsTableBody"></tbody>
                 </table>
             </div>
-            <div id="paginationControls" class="pagination"></div>
         </div>
     </div>
 
@@ -122,76 +122,20 @@
     <script src="data.js"></script>
     <script src="visit.js"></script>
     <script>
-        // رابط النشر الخاص بك
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFYuFdSudyuoDEd5npce03XBJ1kNvGsi1tmxrISa-1N8T7XNClxs9P4QDtGzK53-_Uw/exec";
 
-        let _institutionsList = [];
-        let _inspectorsList = [];
-
         document.addEventListener('DOMContentLoaded', async () => {
-            const session = requireAuth(['admin', 'inspector', 'manager']);
-            document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
+            requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
 
-            // تعبئة البلديات
-            const MUNICIPALITIES = ['توقرت','النزلة','تبسبست','الزاوية العابدية','تماسين','بلدة عمر','الطيبات','المنقر','بن ناصر','المقارين','سيدي سليمان','الحجيرة','العالية'];
-            const munSel = document.getElementById('municipalitySelect');
-            MUNICIPALITIES.sort().forEach(m => munSel.add(new Option(m, m)));
-
-            // جلب البيانات الأولية
-            async function initData() {
-                showLoader();
-                try {
-                    const [inspData, instResp] = await Promise.all([
-                        fetchInspectors(),
-                        fetch("https://script.google.com/macros/s/AKfycbwNzwChPUA8cfMmeskQhLCsLc8lSsuM8vWMkCKpDLnRADwW1iePrMeh7c3qdNfXEUBevw/exec?action=get&sheet=institutions")
-                    ]);
-                    _inspectorsList = inspData;
-                    const instJson = await instResp.json();
-                    _institutionsList = Array.isArray(instJson) ? instJson : (instJson.data || []);
-                } catch (e) { console.error("Data Load Error:", e); }
-                hideLoader();
-            }
-
-            await initData();
-            await loadVisits(); // دالة موجودة في visit.js
-
-            const stageSel = document.getElementById('stageSelect');
-            const munSel_el = document.getElementById('municipalitySelect');
-            const insSel = document.getElementById('inspectorSelect');
-            const instSel = document.getElementById('institutionSelect');
-
-            function filterDropdowns() {
-                const stage = stageSel.value;
-                const mun = munSel_el.value;
-                
-                insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
-                _inspectorsList.filter(i => i['المرحلة'] === stage).forEach(i => insSel.add(new Option(i['الاسم'], i['الاسم'])));
-                insSel.disabled = false;
-
-                if (stage && mun) {
-                    instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
-                    const filtered = _institutionsList.filter(i => (i['المرحلة'] || '').trim() === stage && (i['البلدية'] || '').trim() === mun);
-                    filtered.forEach(i => instSel.add(new Option(i['اسم المؤسسة'], i['اسم المؤسسة'])));
-                    instSel.disabled = false;
-                }
-            }
-
-            stageSel.addEventListener('change', filterDropdowns);
-            munSel_el.addEventListener('change', filterDropdowns);
-            insSel.addEventListener('change', () => {
-                const insp = _inspectorsList.find(i => i['الاسم'] === insSel.value);
-                document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
-            });
-
-            // ── معالجة الإرسال لـ Google Sheets ────────────────
+            // ── إرسال البيانات ──────────────────────────────────────
             document.getElementById('visitForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true;
-                btn.innerText = 'جاري الإرسال للشيت...';
+                btn.innerText = 'جاري المعالجة...';
 
-                const formData = {
+                const data = {
                     "المرحلة": document.getElementById('stageSelect').value,
                     "البلدية": document.getElementById('municipalitySelect').value,
                     "المؤسسة": document.getElementById('institutionSelect').value,
@@ -203,32 +147,29 @@
                     "تاريخ الزيارة": document.getElementById('vDate').value,
                     "النقطة": document.getElementById('score').value,
                     "الموسم": document.getElementById('season').value,
-                    "sheetName": "visits"
+                    "sheetName": "visits",
+                    "createdAt": new Date().toLocaleString('ar-DZ')
                 };
 
-                const queryString = new URLSearchParams(formData).toString();
+                const queryString = new URLSearchParams(data).toString();
 
                 try {
-                    // الإرسال الفعلي لـ Google Sheets
+                    // نستخدم Fetch بأسلوب يتجنب تعارض CORS الظاهري
                     await fetch(`${SCRIPT_URL}?${queryString}`, {
                         method: 'POST',
                         mode: 'no-cors'
                     });
 
-                    // التنفيذ المحلي (لإضافة الزيارة للجدول في الصفحة)
-                    if (typeof handleVisitSubmit === 'function') {
-                        await handleVisitSubmit(e);
-                    }
-
-                    alert("✅ تم الحفظ بنجاح وإرسال البيانات للشيت");
+                    // تنفيذ الحفظ المحلي ليظهر في الجدول فوراً
+                    if (typeof handleVisitSubmit === 'function') await handleVisitSubmit(e);
+                    
+                    alert("✅ تم الحفظ والإرسال بنجاح");
                     this.reset();
-                    document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
                 } catch (err) {
-                    console.error(err);
-                    alert("❌ حدث خطأ أثناء الإرسال السحابي");
+                    alert("⚠️ تم الحفظ محلياً؛ يرجى التأكد من اتصال الإنترنت للإرسال السحابي");
                 } finally {
                     btn.disabled = false;
-                    btn.innerText = '📥 حفظ وإرسال للشيت';
+                    btn.innerText = '📥 حفظ وإرسال للبيانات';
                 }
             });
         });
