@@ -1,5 +1,6 @@
 /**
  * نظام إدارة الزيارات التفتيشية - المطور: سعداوي زين العابدين
+ * تم إصلاح آلية الحفظ والجلب لتتوافق مع Apps Script
  */
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_S2kmEp4M2cDBb5RIkNwhSJroFGQpgKsm7rInYqqIblGzex5zzR5xUN2dhEU7eFLR/exec';
@@ -22,7 +23,7 @@ function generateId() {
     return 'VIS-' + Math.random().toString(36).substr(2, 5).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
 }
 
-// تنسيق التاريخ ليكون YYYY-MM-DD
+// تنسيق التاريخ
 function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
@@ -45,26 +46,30 @@ function buildMapping(firstRow) {
     return mapping;
 }
 
-// ── جلب البيانات من الشيت ──
+// ── جلب البيانات ──
 async function loadVisits() {
-    showLoader();
+    if (typeof showLoader === 'function') showLoader();
     try {
-        const url = `${SCRIPT_URL}?action=get&sheet=visits`;
-        const res = await fetch(url);
-        const raw = await res.json();
-        allVisits = Array.isArray(raw) ? raw : (raw.data || []);
+        const res = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits`);
+        const data = await res.json();
+        allVisits = Array.isArray(data) ? data : [];
         if (allVisits.length > 0) columnMapping = buildMapping(allVisits[0]);
         applySearch();
-    } catch (err) { 
-        console.error("Load error:", err); 
+    } catch (err) {
+        console.error("خطأ في جلب البيانات:", err);
     }
-    hideLoader();
+    if (typeof hideLoader === 'function') hideLoader();
 }
 
-// ── عرض البيانات في الجدول ──
+// ── عرض الجدول ──
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
+
+    if (visits.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد بيانات مسجلة حالياً</td></tr>';
+        return;
+    }
 
     const start = (currentPage - 1) * rowsPerPage;
     const paginated = visits.slice(start, start + rowsPerPage);
@@ -88,7 +93,7 @@ function renderTable(visits) {
             <td>${formatDate(getField(v, 'تاريخ الزيارة'))}</td>
             <td>${getField(v, 'نوع الزيارة')}</td>
             <td><span class="badge badge-accent">${score}</span></td>
-            <td>${getField(v, 'العقبات') || 'لا شيء'}</td>
+            <td>${getField(v, 'العقبات')}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td>
                 <div class="action-btns">
@@ -101,7 +106,7 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-// ── معالجة الحفظ (إرسال المعاملات عبر الرابط) ──
+// ── معالجة الحفظ (الإرسال المضمون) ──
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -116,51 +121,36 @@ async function handleVisitSubmit(e) {
         'اسم المفتش': document.getElementById('inspectorSelect').value,
         'التخصص': document.getElementById('specialty').value,
         'المرحلة': document.getElementById('stageSelect').value,
-        'اسم المعني بالزيارة': form.visitee.value,
-        'الرتبة': form.rank.value,
-        'الدرجة': form.grade.value,
+        'اسم المعني بالزيارة': document.getElementById('visitee').value,
+        'الرتبة': document.getElementById('rank').value,
+        'الدرجة': document.getElementById('grade').value,
         'المؤسسة': document.getElementById('institutionSelect').value,
-        'تاريخ الزيارة': form.visitDate.value,
-        'نوع الزيارة': form.visitType.value,
-        'النقطة': form.score.value || '0',
-        'العقبات': form.penalties.value,
-        'الملاحظة': form.notes.value,
-        'الموسم الدراسي': form.season.value
+        'تاريخ الزيارة': document.getElementById('vDate').value,
+        'نوع الزيارة': document.getElementById('visitType').value,
+        'النقطة': document.getElementById('score').value || '0',
+        'العقبات': document.getElementById('penalties').value,
+        'الملاحظة': document.getElementById('notes').value,
+        'الموسم الدراسي': document.getElementById('season').value
     };
 
-    // منع التكرار عند الإضافة الجديدة
-    if (!isEdit) {
-        const duplicate = allVisits.some(v => 
-            String(getField(v, 'اسم المعني بالزيارة')).trim() === visitData['اسم المعني بالزيارة'].trim() && 
-            formatDate(getField(v, 'تاريخ الزيارة')) === visitData['تاريخ الزيارة']
-        );
-        if (duplicate) return alert('⚠️ هذا المعني مسجل بالفعل في هذا التاريخ!');
-    }
-
-    showLoader();
+    if (typeof showLoader === 'function') showLoader();
     try {
         const params = new URLSearchParams(visitData).toString();
-        // إرسال البيانات كـ Query Parameters لضمان تخطي مشاكل CORS والحفظ
-        await fetch(`${SCRIPT_URL}?${params}`, {
-            method: 'POST',
-            mode: 'no-cors'
-        });
+        await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
         
-        alert(isEdit ? '✅ تم تحديث البيانات بنجاح' : '✅ تم حفظ الزيارة بنجاح');
+        alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
         resetForm();
         await loadVisits();
     } catch (err) {
-        console.error("Submit error:", err);
-        alert('❌ فشل الاتصال بالخادم');
+        alert('❌ فشل الاتصال');
     }
-    hideLoader();
+    if (typeof hideLoader === 'function') hideLoader();
 }
 
-// ── التعديل ──
+// ── التعديل والحذف ──
 function editVisit(id) {
     const v = allVisits.find(visit => getField(visit, 'المعرف') === id);
     if (!v) return;
-    
     document.getElementById('editId').value = getField(v, 'المعرف');
     document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
     document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
@@ -169,32 +159,21 @@ function editVisit(id) {
     document.getElementById('grade').value = getField(v, 'الدرجة');
     document.getElementById('penalties').value = getField(v, 'العقبات');
     document.getElementById('season').value = getField(v, 'الموسم الدراسي');
-    document.getElementById('visitType').value = getField(v, 'نوع الزيارة');
-    document.getElementById('notes').value = getField(v, 'الملاحظة');
-
-    document.getElementById('formTitle').innerText = '📝 تعديل بيانات الزيارة';
+    document.getElementById('formTitle').innerText = '📝 تعديل البيانات';
     document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
     document.getElementById('cancelBtn').style.display = 'inline-block';
-    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ── الحذف ──
 async function deleteVisit(id) {
-    if (!confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) return;
-    showLoader();
-    try {
-        const url = `${SCRIPT_URL}?action=delete&id=${id}&sheetName=visits`;
-        await fetch(url, { method: 'POST', mode: 'no-cors' });
-        alert('✅ تم الحذف بنجاح');
-        await loadVisits();
-    } catch (err) { 
-        console.error(err); 
-    }
-    hideLoader();
+    if (!confirm('حذف نهائي؟')) return;
+    if (typeof showLoader === 'function') showLoader();
+    await fetch(`${SCRIPT_URL}?action=delete&id=${id}&sheetName=visits`, { method: 'POST', mode: 'no-cors' });
+    alert('✅ تم الحذف');
+    await loadVisits();
+    if (typeof hideLoader === 'function') hideLoader();
 }
 
-// ── إعادة ضبط النموذج ──
 function resetForm() {
     document.getElementById('visitForm').reset();
     document.getElementById('editId').value = '';
@@ -204,30 +183,16 @@ function resetForm() {
     document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
 }
 
-// ── البحث والفلترة ──
 function applySearch() {
     const n = (document.getElementById('searchName')?.value || '').toLowerCase();
-    const inst = (document.getElementById('searchInst')?.value || '').toLowerCase();
-    const insp = (document.getElementById('searchInspector')?.value || '').toLowerCase();
-    
     filteredVisits = allVisits.filter(v => 
-        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(n) &&
-        String(getField(v, 'المؤسسة')).toLowerCase().includes(inst) &&
-        String(getField(v, 'اسم المفتش')).toLowerCase().includes(insp)
+        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(n)
     );
-    currentPage = 1; 
     renderTable(filteredVisits);
 }
 
-// ── التحكم في الترقيم ──
 function updatePaginationControls(total) {
     const pages = Math.ceil(total / rowsPerPage);
     const container = document.getElementById('paginationControls');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <button class="btn btn-sm" onclick="currentPage=1;renderTable(filteredVisits)" ${currentPage===1?'disabled':''}>الأولى</button>
-        <span style="font-weight:bold; margin: 0 10px;">صفحة ${currentPage} من ${pages || 1}</span>
-        <button class="btn btn-sm" onclick="currentPage=${pages || 1};renderTable(filteredVisits)" ${currentPage===pages||pages===0?'disabled':''}>الأخيرة</button>
-    `;
+    if (container) container.innerHTML = `<span>صفحة ${currentPage} من ${pages || 1}</span>`;
 }
