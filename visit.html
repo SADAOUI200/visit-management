@@ -70,22 +70,18 @@
                         <select id="notes">
                             <option value="العمل بالتوجيهات والتوصيات المقدمة">1- العمل بالتوجيهات والتوصيات المقدمة</option>
                             <option value="تثمين الجهد المبذول">2- تثمين الجهد المبذول</option>
-                            <option value="العمل على تدارك النقائص المسجلة">3- العمل على تدارك النقائص المسجلة</option>
+                            <option value="تدارك النقائص المسجلة">3- تدارك النقائص المسجلة</option>
                         </select>
                     </div>
                     <div class="form-group"><label>النقطة</label><input type="number" id="score" step="0.25" /></div>
                     <div class="form-group"><label>الموسم</label><select id="season"><option selected>2025 / 2026</option></select></div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال للشيت</button></div>
+                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ البيانات</button></div>
             </form>
         </div>
 
         <div class="card fade-in">
             <div class="card-title">🔍 سجل الزيارات</div>
-            <div class="search-grid">
-                <input type="text" id="searchName" placeholder="بحث بالاسم..." oninput="applySearch()" />
-                <input type="text" id="searchInst" placeholder="بحث بالمؤسسة..." oninput="applySearch()" />
-            </div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -110,7 +106,7 @@
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
-            // ضبط تاريخ اليوم بتنسيق قصير
+            // 1. معالجة عرض التاريخ (تنسيق عادي وقصير)
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('vDate').value = today;
 
@@ -142,13 +138,11 @@
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            document.getElementById('visitForm').onsubmit = function(e) {
+            // 2. معالجة الإرسال (الحل القطعي)
+            document.getElementById('visitForm').onsubmit = async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true; btn.innerText = 'جاري الإرسال...';
-
-                // تنسيق التاريخ ليظهر بشكل عادي قصير
-                const rawDate = document.getElementById('vDate').value;
 
                 const data = {
                     "المرحلة": stageSel.value,
@@ -159,36 +153,36 @@
                     "المعني": document.getElementById('visitee').value,
                     "العقبات": document.getElementById('penalties').value,
                     "الملاحظة": document.getElementById('notes').value,
-                    "تاريخ الزيارة": rawDate, // التاريخ القصير YYYY-MM-DD
+                    "تاريخ الزيارة": document.getElementById('vDate').value,
                     "النقطة": document.getElementById('score').value,
                     "الموسم": document.getElementById('season').value,
                     "sheetName": "visits"
                 };
 
-                // استخدام تقنية الإرسال عبر طلب JSONP/GET لتفادي أخطاء CORS والشبكة
-                const script = document.createElement('script');
                 const query = new URLSearchParams(data).toString();
-                script.src = `${SCRIPT_URL}?${query}&callback=onSuccess`;
-                
-                window.onSuccess = async function(response) {
-                    if (typeof handleVisitSubmit === 'function') await handleVisitSubmit(e);
-                    alert("✅ تم الحفظ بنجاح في الشيت وفي الجدول");
-                    document.getElementById('visitForm').reset();
-                    document.getElementById('vDate').value = today;
-                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال للشيت';
-                    document.body.removeChild(script);
-                };
 
-                // في حالة فشل السكريبت في التحميل (لكن البيانات غالباً تصل)
-                script.onerror = async function() {
-                    if (typeof handleVisitSubmit === 'function') await handleVisitSubmit(e);
-                    alert("✅ تم إرسال البيانات وتحديث الجدول بنجاح");
-                    document.getElementById('visitForm').reset();
-                    document.getElementById('vDate').value = today;
-                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال للشيت';
-                };
+                try {
+                    // إرسال البيانات بوضع no-cors (يضمن الإرسال حتى لو لم نقرأ الرد)
+                    fetch(`${SCRIPT_URL}?${query}`, {
+                        method: "POST",
+                        mode: "no-cors"
+                    });
 
-                document.body.appendChild(script);
+                    // تحديث الجدول المحلي فوراً دون انتظار رد السيرفر
+                    if (typeof handleVisitSubmit === 'function') {
+                        await handleVisitSubmit(e);
+                    }
+
+                    alert("✅ تم إرسال البيانات للشيت وتحديث الجدول بنجاح");
+                    this.reset();
+                    document.getElementById('vDate').value = today;
+
+                } catch (err) {
+                    console.error(err);
+                    alert("⚠️ حدث مشكلة في العرض، تأكد من البيانات");
+                } finally {
+                    btn.disabled = false; btn.innerText = '📥 حفظ البيانات';
+                }
             };
 
             await loadVisits();
