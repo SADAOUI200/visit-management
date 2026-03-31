@@ -22,7 +22,7 @@ function generateId() {
 }
 
 function formatDate(val) {
-    if (!val) return '-';
+    if (!val || val === '-') return '-';
     const d = new Date(val);
     return isNaN(d) ? val : d.toISOString().split('T')[0];
 }
@@ -42,18 +42,14 @@ function buildMapping(firstRow) {
     return mapping;
 }
 
-// ── جلب البيانات وعرضها في الجدول ──
+// جلب البيانات وعرضها
 async function loadVisits() {
     if (window.showLoader) showLoader();
     try {
-        // إضافة parameter لمنع التخزين المؤقت (Cache)
-        const res = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits&_=${Date.now()}`);
+        const res = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits&t=${Date.now()}`);
         const data = await res.json();
-        allVisits = Array.isArray(data) ? data : (data.data || []);
-        
-        if (allVisits.length > 0) {
-            columnMapping = buildMapping(allVisits[0]);
-        }
+        allVisits = Array.isArray(data) ? data : [];
+        if (allVisits.length > 0) columnMapping = buildMapping(allVisits[0]);
         applySearch();
     } catch (err) {
         console.error("خطأ في الجلب:", err);
@@ -66,7 +62,8 @@ function renderTable(visits) {
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد سجلات حالياً</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد بيانات حالياً</td></tr>';
+        updatePaginationControls(0);
         return;
     }
 
@@ -101,7 +98,24 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-// ── حفظ البيانات (إضافة وتعديل) ──
+// أزرار التنقل (السابق والتالي)
+function updatePaginationControls(total) {
+    const pages = Math.ceil(total / rowsPerPage);
+    const container = document.getElementById('paginationControls');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <button class="btn btn-sm" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>السابق</button>
+        <span style="margin: 0 15px; font-weight: bold;">صفحة ${currentPage} من ${pages || 1}</span>
+        <button class="btn btn-sm" onclick="changePage(1)" ${currentPage >= pages ? 'disabled' : ''}>التالي</button>
+    `;
+}
+
+function changePage(step) {
+    currentPage += step;
+    renderTable(filteredVisits);
+}
+
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const editId = document.getElementById('editId').value;
@@ -130,17 +144,12 @@ async function handleVisitSubmit(e) {
     if (window.showLoader) showLoader();
     try {
         const params = new URLSearchParams(visitData).toString();
-        // استخدام POST مع المعاملات لضمان الحفظ
-        await fetch(`${SCRIPT_URL}?${params}`, { 
-            method: 'POST', 
-            mode: 'no-cors' 
-        });
-        
+        await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
         alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
         resetForm();
-        await loadVisits();
+        setTimeout(loadVisits, 1500); // تأخير بسيط لضمان تحديث جوجل شيت
     } catch (err) {
-        alert('❌ فشل في الاتصال');
+        alert('❌ خطأ في الاتصال');
     }
     if (window.hideLoader) hideLoader();
 }
@@ -160,10 +169,4 @@ function resetForm() {
     document.getElementById('editId').value = '';
     document.getElementById('formTitle').innerText = '✏️ تسجيل زيارة جديدة';
     document.getElementById('submitBtn').innerText = '📥 حفظ البيانات';
-}
-
-function updatePaginationControls(total) {
-    const pages = Math.ceil(total / rowsPerPage);
-    const container = document.getElementById('paginationControls');
-    if (container) container.innerHTML = `صفحة ${currentPage} من ${pages || 1}`;
 }
