@@ -15,17 +15,17 @@ let columnMapping = {};
 let currentPage = 1;
 const rowsPerPage = 10;
 
-function generateId() { return 'VIS-' + Math.random().toString(36).substr(2, 5).toUpperCase() + '-' + Date.now().toString(36).toUpperCase(); }
+// توليد معرف فريد
+function generateId() {
+    return 'VIS-' + Math.random().toString(36).substr(2, 5).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+}
 
-// تنسيق التاريخ ليكون YYYY-MM-DD دوماً
+// تنسيق التاريخ ليكون YYYY-MM-DD
 function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
     if (isNaN(d)) return val;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return d.toISOString().split('T')[0];
 }
 
 function getField(row, fieldName) {
@@ -33,7 +33,6 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-// بناء خريطة الأعمدة لضمان التوافق مع الشيت
 function buildMapping(firstRow) {
     const mapping = {};
     const actualKeys = Object.keys(firstRow || {});
@@ -44,7 +43,7 @@ function buildMapping(firstRow) {
     return mapping;
 }
 
-// جلب البيانات
+// ── جلب البيانات ──
 async function loadVisits() {
     showLoader();
     try {
@@ -58,7 +57,7 @@ async function loadVisits() {
     hideLoader();
 }
 
-// عرض الجدول
+// ── عرض الجدول ──
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
@@ -67,8 +66,9 @@ function renderTable(visits) {
     const paginated = visits.slice(start, start + rowsPerPage);
 
     tbody.innerHTML = paginated.map((v, i) => {
+        // تنظيف حقل النقطة إذا ظهر كتاريخ
         let score = getField(v, 'النقطة');
-        if (score && score.toString().includes('GMT')) score = '0'; // تنظيف النقطة
+        if (score && score.toString().includes('GMT')) score = '0';
 
         return `
         <tr>
@@ -89,8 +89,8 @@ function renderTable(visits) {
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td>
                 <div class="action-btns">
-                    <button class="btn btn-sm btn-edit" title="تعديل" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
-                    <button class="btn btn-sm btn-delete" title="حذف" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
+                    <button class="btn btn-sm btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
+                    <button class="btn btn-sm btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
                 </div>
             </td>
         </tr>`;
@@ -98,60 +98,67 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-// معالجة الحفظ (بإستخدام URLSearchParams المضمون)
+// ── الإرسال المضمون (الحل هنا) ──
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const editId = document.getElementById('editId').value;
     const isEdit = !!editId;
 
-    // شرط منع التكرار (للجديد فقط)
+    // منع التكرار
     if (!isEdit) {
         const duplicate = allVisits.some(v => 
-            getField(v, 'اسم المعني بالزيارة').trim() === form.visitee.value.trim() && 
+            String(getField(v, 'اسم المعني بالزيارة')).trim() === form.visitee.value.trim() && 
             formatDate(getField(v, 'تاريخ الزيارة')) === form.visitDate.value
         );
-        if (duplicate) return alert('⚠️ هذا الاسم مسجل بالفعل في هذا التاريخ!');
+        if (duplicate) return alert('⚠️ هذا المعني مسجل بالفعل في هذا التاريخ!');
     }
 
-    const payload = {
-        'action': isEdit ? 'update' : 'insert',
-        'sheetName': 'visits',
-        'المعرف': isEdit ? editId : generateId(),
-        'timestamp': new Date().toISOString(),
-        'اسم المفتش': document.getElementById('inspectorSelect').value,
-        'التخصص': document.getElementById('specialty').value,
-        'المرحلة': form.stage.value,
-        'اسم المعني بالزيارة': form.visitee.value,
-        'الرتبة': form.rank.value,
-        'الدرجة': form.grade.value,
-        'المؤسسة': document.getElementById('institutionSelect').value,
-        'تاريخ الزيارة': form.visitDate.value,
-        'نوع الزيارة': form.visitType.value,
-        'النقطة': form.score.value,
-        'العقبات': form.penalties.value,
-        'الملاحظة': form.notes.value,
-        'الموسم الدراسي': form.season.value
-    };
+    // تجميع البيانات في FormData لإرسالها بالشكل التقليدي
+    const fd = new FormData();
+    fd.append('action', isEdit ? 'update' : 'insert');
+    fd.append('sheetName', 'visits');
+    fd.append('المعرف', isEdit ? editId : generateId());
+    fd.append('timestamp', new Date().toISOString());
+    fd.append('اسم المفتش', document.getElementById('inspectorSelect').value);
+    fd.append('التخصص', document.getElementById('specialty').value);
+    fd.append('المرحلة', form.stage.value);
+    fd.append('اسم المعني بالزيارة', form.visitee.value);
+    fd.append('الرتبة', form.rank.value);
+    fd.append('الدرجة', form.grade.value);
+    fd.append('المؤسسة', document.getElementById('institutionSelect').value);
+    fd.append('تاريخ الزيارة', form.visitDate.value);
+    fd.append('نوع الزيارة', form.visitType.value);
+    fd.append('النقطة', form.score.value);
+    fd.append('العقبات', form.penalties.value);
+    fd.append('الملاحظة', form.notes.value);
+    fd.append('الموسم الدراسي', form.season.value);
 
     showLoader();
     try {
-        const queryParams = new URLSearchParams(payload).toString();
-        // الإرسال بطريقة GET/POST التقليدية التي يفضلها Apps Script
-        await fetch(`${getSheetURL('visits')}?${queryParams}`, { method: 'POST', mode: 'no-cors' });
+        const SCRIPT_URL = getSheetURL('visits');
+        // تحويل FormData إلى URLSearchParams لضمان وصولها للسكريبت كـ Parameters
+        const params = new URLSearchParams(fd).toString();
         
-        alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
+        await fetch(`${SCRIPT_URL}?${params}`, {
+            method: 'POST',
+            mode: 'no-cors'
+        });
+        
+        alert('✅ تمت العملية بنجاح');
         resetForm();
         await loadVisits();
-    } catch (err) { console.error("Submit error:", err); }
+    } catch (err) {
+        console.error("Submit error:", err);
+        alert('❌ فشل الاتصال');
+    }
     hideLoader();
 }
 
-// وظائف التعديل والحذف
+// ── باقي الوظائف (تعديل، حذف، بحث) ──
 function editVisit(id) {
     const v = allVisits.find(visit => getField(visit, 'المعرف') === id);
     if (!v) return;
-    document.getElementById('formTitle').innerText = '📝 تعديل الزيارة';
     document.getElementById('editId').value = getField(v, 'المعرف');
     document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
     document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
@@ -160,17 +167,19 @@ function editVisit(id) {
     document.getElementById('grade').value = getField(v, 'الدرجة');
     document.getElementById('penalties').value = getField(v, 'العقبات');
     document.getElementById('season').value = getField(v, 'الموسم الدراسي');
+    document.getElementById('formTitle').innerText = '📝 تعديل البيانات';
     document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
     document.getElementById('cancelBtn').style.display = 'inline-block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function deleteVisit(id) {
-    if (!confirm('هل تريد حذف هذا السجل نهائياً؟')) return;
+    if (!confirm('هل أنت متأكد من الحذف؟')) return;
     showLoader();
     try {
-        await fetch(`${getSheetURL('visits')}?action=delete&id=${id}&sheetName=visits`, { method: 'POST', mode: 'no-cors' });
-        alert('✅ تم الحذف بنجاح');
+        const url = `${getSheetURL('visits')}?action=delete&id=${id}&sheetName=visits`;
+        await fetch(url, { method: 'POST', mode: 'no-cors' });
+        alert('✅ تم الحذف');
         await loadVisits();
     } catch (err) { console.error(err); }
     hideLoader();
