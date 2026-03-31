@@ -6,7 +6,7 @@
 const FIELD_NAMES = [
     'المعرف', 'timestamp', 'اسم المفتش', 'التخصص', 'المرحلة',
     'اسم المعني بالزيارة', 'الرتبة', 'الدرجة', 'المؤسسة',
-    'تاريخ الزيارة', 'نوع الزيارة', 'النقطة', 'العقوبات',
+    'تاريخ الزيارة', 'نوع الزيارة', 'النقطة', 'العقبات',
     'الملاحظة', 'الموسم الدراسي'
 ];
 
@@ -44,18 +44,18 @@ function getField(row, fieldName) {
 
 // ── جلب البيانات ──────────────────────────────────────────────
 async function fetchVisits() {
-    showLoader();
+    if (typeof showLoader === 'function') showLoader();
     try {
         const url = getSheetURL('visits') + '?action=get&sheet=visit';
         const res = await fetch(url);
         const raw = await res.json();
         let data = Array.isArray(raw) ? raw : (raw.data || []);
         if (data.length > 0) columnMapping = buildMapping(data[0]);
-        hideLoader();
+        if (typeof hideLoader === 'function') hideLoader();
         return { ok: true, data };
     } catch (err) {
         console.error("Fetch error:", err);
-        hideLoader();
+        if (typeof hideLoader === 'function') hideLoader();
         return { ok: false, data: [] };
     }
 }
@@ -71,7 +71,6 @@ function renderTable(visits) {
         return;
     }
 
-    // حساب نطاق الصفحة الحالية
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
     const paginatedVisits = visits.slice(start, end);
@@ -88,10 +87,10 @@ function renderTable(visits) {
             <td>${getField(v, 'الرتبة')}</td>
             <td>${getField(v, 'الدرجة')}</td>
             <td>${getField(v, 'المؤسسة')}</td>
-            <td>${getField(v, 'تاريخ الزيارة')}</td>
+            <td>${formatDate(getField(v, 'تاريخ الزيارة'))}</td>
             <td>${getField(v, 'نوع الزيارة')}</td>
             <td><span class="badge badge-accent">${getField(v, 'النقطة')}</span></td>
-            <td>${getField(v, 'العقوبات') || '-'}</td>
+            <td>${getField(v, 'العقبات') || '-'}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td class="note-cell">${getField(v, 'الملاحظة') || '-'}</td>
         </tr>`).join('');
@@ -137,43 +136,79 @@ function applySearch() {
     renderTable(filteredVisits);
 }
 
+/**
+ * 1. وظيفة اختصار التاريخ (YYYY-MM-DD)
+ */
 function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
-    return isNaN(d) ? val : d.toLocaleDateString('ar-DZ');
+    if (isNaN(d)) return val;
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
+/**
+ * 2. معالجة الإرسال مع شرط منع التكرار
+ */
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const form = e.target;
+    
+    // البيانات الحالية المطلوب فحصها
+    const currentVisitee = (form.visitee?.value || '').trim();
+    const currentDate = form.visitDate?.value;
+
+    // شرط منع التكرار: البحث في البيانات المحملة (allVisits)
+    const isDuplicate = allVisits.some(v => {
+        const existingName = (getField(v, 'اسم المعني بالزيارة') || '').trim();
+        const existingDate = formatDate(getField(v, 'تاريخ الزيارة')); // توحيد الصيغة للمقارنة
+        return existingName === currentVisitee && existingDate === currentDate;
+    });
+
+    if (isDuplicate) {
+        alert(`⚠️ خطأ: تم تسجيل زيارة لهذا الشخص (${currentVisitee}) في هذا التاريخ (${currentDate}) مسبقاً.`);
+        return; 
+    }
+
     const visitData = {
         'المعرف': generateId(),
         'timestamp': new Date().toISOString(),
         'اسم المفتش': document.getElementById('inspectorSelect').value,
         'التخصص': document.getElementById('specialty').value,
         'المرحلة': form.stage.value,
-        'اسم المعني بالزيارة': form.visitee.value,
-        'الرتبة': form.rank.value,
-        'الدرجة': form.grade.value,
+        'اسم المعني بالزيارة': currentVisitee,
+        'الرتبة': form.rank?.value || '-',
+        'الدرجة': form.grade?.value || '-',
         'المؤسسة': document.getElementById('institutionSelect').value,
-        'تاريخ الزيارة': form.visitDate.value,
-        'نوع الزيارة': form.visitType.value,
-        'النقطة': form.score.value,
-        'العقوبات': form.penalties.value,
-        'الملاحظة': form.notes.value,
-        'الموسم الدراسي': form.season.value
+        'تاريخ الزيارة': currentDate,
+        'نوع الزيارة': form.visitType?.value || 'توجيهية',
+        'النقطة': form.score?.value || '0',
+        'العقبات': form.penalties?.value || 'لا شيء',
+        'الملاحظة': form.notes?.value || '-',
+        'الموسم الدراسي': form.season?.value || '2025 / 2026'
     };
 
-    showLoader();
+    if (typeof showLoader === 'function') showLoader();
     try {
         await fetch(getSheetURL('visits'), {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify({ action: 'insert', sheet: 'visit', data: visitData })
         });
-        showToast('✅ تم الحفظ بنجاح');
+        
+        if (typeof showToast === 'function') showToast('✅ تم الحفظ بنجاح');
+        else alert('✅ تم الحفظ بنجاح');
+        
         form.reset();
-        await loadVisits();
-    } catch (err) { console.error(err); }
-    hideLoader();
+        // إعادة تعيين تاريخ اليوم
+        if(document.getElementById('vDate')) document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+        
+        await loadVisits(); 
+    } catch (err) { 
+        console.error("Submit error:", err); 
+    }
+    if (typeof hideLoader === 'function') hideLoader();
 }
