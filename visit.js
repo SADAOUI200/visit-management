@@ -15,18 +15,17 @@ let columnMapping = {};
 let currentPage = 1;
 const rowsPerPage = 10;
 
-function generateId() { return 'VIS-' + Math.random().toString(36).substr(2, 8).toUpperCase(); }
+function generateId() { return 'VIS-' + Math.random().toString(36).substr(2, 5).toUpperCase() + '-' + Date.now().toString(36).toUpperCase(); }
 
-function normalizeKey(str) { return String(str || '').trim().replace(/\s+/g, ' '); }
-
-function buildMapping(firstRow) {
-    const mapping = {};
-    const actualKeys = Object.keys(firstRow || {});
-    FIELD_NAMES.forEach(f => {
-        const match = actualKeys.find(k => normalizeKey(k) === normalizeKey(f));
-        if (match) mapping[f] = match;
-    });
-    return mapping;
+// تنسيق التاريخ ليكون YYYY-MM-DD دوماً
+function formatDate(val) {
+    if (!val) return '-';
+    const d = new Date(val);
+    if (isNaN(d)) return val;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function getField(row, fieldName) {
@@ -34,22 +33,32 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-async function fetchVisits() {
-    showLoader();
-    try {
-        const url = getSheetURL('visits') + '?action=get&sheet=visit';
-        const res = await fetch(url);
-        const data = await res.json();
-        const finalData = Array.isArray(data) ? data : (data.data || []);
-        if (finalData.length > 0) columnMapping = buildMapping(finalData[0]);
-        hideLoader();
-        return { ok: true, data: finalData };
-    } catch (err) {
-        hideLoader();
-        return { ok: false, data: [] };
-    }
+// بناء خريطة الأعمدة لضمان التوافق مع الشيت
+function buildMapping(firstRow) {
+    const mapping = {};
+    const actualKeys = Object.keys(firstRow || {});
+    FIELD_NAMES.forEach(f => {
+        const match = actualKeys.find(k => k.trim() === f.trim());
+        if (match) mapping[f] = match;
+    });
+    return mapping;
 }
 
+// جلب البيانات
+async function loadVisits() {
+    showLoader();
+    try {
+        const url = `${getSheetURL('visits')}?action=get&sheet=visit`;
+        const res = await fetch(url);
+        const raw = await res.json();
+        allVisits = Array.isArray(raw) ? raw : (raw.data || []);
+        if (allVisits.length > 0) columnMapping = buildMapping(allVisits[0]);
+        applySearch();
+    } catch (err) { console.error("Load error:", err); }
+    hideLoader();
+}
+
+// عرض الجدول
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
@@ -58,9 +67,8 @@ function renderTable(visits) {
     const paginated = visits.slice(start, start + rowsPerPage);
 
     tbody.innerHTML = paginated.map((v, i) => {
-        // حل مشكلة التاريخ في حقل النقطة
         let score = getField(v, 'النقطة');
-        if (score && score.toString().includes('GMT')) score = '0';
+        if (score && score.toString().includes('GMT')) score = '0'; // تنظيف النقطة
 
         return `
         <tr>
@@ -81,8 +89,8 @@ function renderTable(visits) {
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td>
                 <div class="action-btns">
-                    <button class="btn btn-sm btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
-                    <button class="btn btn-sm btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
+                    <button class="btn btn-sm btn-edit" title="تعديل" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
+                    <button class="btn btn-sm btn-delete" title="حذف" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
                 </div>
             </td>
         </tr>`;
@@ -90,29 +98,26 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-function formatDate(val) {
-    if (!val) return '-';
-    const d = new Date(val);
-    if (isNaN(d)) return val;
-    return d.toISOString().split('T')[0];
-}
-
+// معالجة الحفظ (بإستخدام URLSearchParams المضمون)
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const form = e.target;
-    const isEdit = !!document.getElementById('editId').value;
-    
-    // منع التكرار (فقط في حالة التسجيل الجديد)
+    const editId = document.getElementById('editId').value;
+    const isEdit = !!editId;
+
+    // شرط منع التكرار (للجديد فقط)
     if (!isEdit) {
-        const isDuplicate = allVisits.some(v => 
+        const duplicate = allVisits.some(v => 
             getField(v, 'اسم المعني بالزيارة').trim() === form.visitee.value.trim() && 
             formatDate(getField(v, 'تاريخ الزيارة')) === form.visitDate.value
         );
-        if (isDuplicate) return alert('⚠️ هذا المعني مسجل بالفعل في هذا التاريخ!');
+        if (duplicate) return alert('⚠️ هذا الاسم مسجل بالفعل في هذا التاريخ!');
     }
 
-    const visitData = {
-        'المعرف': isEdit ? document.getElementById('editId').value : generateId(),
+    const payload = {
+        'action': isEdit ? 'update' : 'insert',
+        'sheetName': 'visits',
+        'المعرف': isEdit ? editId : generateId(),
         'timestamp': new Date().toISOString(),
         'اسم المفتش': document.getElementById('inspectorSelect').value,
         'التخصص': document.getElementById('specialty').value,
@@ -131,27 +136,22 @@ async function handleVisitSubmit(e) {
 
     showLoader();
     try {
-        const SCRIPT_URL = getSheetURL('visits');
-        const action = isEdit ? 'update' : 'insert';
-        // إرسال كـ GET/POST حسب إعداد الـ Apps Script الخاص بك (هنا نستخدم no-cors للصامت)
-        const params = new URLSearchParams(visitData);
-        params.append("action", action);
-        params.append("sheetName", "visits");
-        
-        await fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'POST', mode: 'no-cors' });
+        const queryParams = new URLSearchParams(payload).toString();
+        // الإرسال بطريقة GET/POST التقليدية التي يفضلها Apps Script
+        await fetch(`${getSheetURL('visits')}?${queryParams}`, { method: 'POST', mode: 'no-cors' });
         
         alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
         resetForm();
         await loadVisits();
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Submit error:", err); }
     hideLoader();
 }
 
+// وظائف التعديل والحذف
 function editVisit(id) {
     const v = allVisits.find(visit => getField(visit, 'المعرف') === id);
     if (!v) return;
-
-    document.getElementById('formTitle').innerText = '📝 تعديل بيانات الزيارة';
+    document.getElementById('formTitle').innerText = '📝 تعديل الزيارة';
     document.getElementById('editId').value = getField(v, 'المعرف');
     document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
     document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
@@ -160,10 +160,20 @@ function editVisit(id) {
     document.getElementById('grade').value = getField(v, 'الدرجة');
     document.getElementById('penalties').value = getField(v, 'العقبات');
     document.getElementById('season').value = getField(v, 'الموسم الدراسي');
-    
-    document.getElementById('cancelBtn').style.display = 'inline-block';
     document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
+    document.getElementById('cancelBtn').style.display = 'inline-block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteVisit(id) {
+    if (!confirm('هل تريد حذف هذا السجل نهائياً؟')) return;
+    showLoader();
+    try {
+        await fetch(`${getSheetURL('visits')}?action=delete&id=${id}&sheetName=visits`, { method: 'POST', mode: 'no-cors' });
+        alert('✅ تم الحذف بنجاح');
+        await loadVisits();
+    } catch (err) { console.error(err); }
+    hideLoader();
 }
 
 function resetForm() {
@@ -175,43 +185,25 @@ function resetForm() {
     document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
 }
 
-async function deleteVisit(id) {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
-    showLoader();
-    try {
-        const url = `${getSheetURL('visits')}?action=delete&id=${id}&sheetName=visits`;
-        await fetch(url, { method: 'POST', mode: 'no-cors' });
-        alert('✅ تم طلب الحذف');
-        await loadVisits();
-    } catch (err) { console.error(err); }
-    hideLoader();
-}
-
 function applySearch() {
-    const n = (document.getElementById('searchName').value || '').toLowerCase();
-    const inst = (document.getElementById('searchInst').value || '').toLowerCase();
-    const insp = (document.getElementById('searchInspector').value || '').toLowerCase();
+    const n = (document.getElementById('searchName')?.value || '').toLowerCase();
+    const inst = (document.getElementById('searchInst')?.value || '').toLowerCase();
+    const insp = (document.getElementById('searchInspector')?.value || '').toLowerCase();
     filteredVisits = allVisits.filter(v => 
-        getField(v, 'اسم المعني بالزيارة').toLowerCase().includes(n) &&
-        getField(v, 'المؤسسة').toLowerCase().includes(inst) &&
-        getField(v, 'اسم المفتش').toLowerCase().includes(insp)
+        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(n) &&
+        String(getField(v, 'المؤسسة')).toLowerCase().includes(inst) &&
+        String(getField(v, 'اسم المفتش')).toLowerCase().includes(insp)
     );
     currentPage = 1; renderTable(filteredVisits);
-}
-
-async function loadVisits() {
-    const res = await fetchVisits();
-    allVisits = res.data;
-    filteredVisits = [...allVisits];
-    renderTable(filteredVisits);
 }
 
 function updatePaginationControls(total) {
     const pages = Math.ceil(total / rowsPerPage);
     const container = document.getElementById('paginationControls');
+    if (!container) return;
     container.innerHTML = `
-        <button class="btn btn-sm" onclick="currentPage=1;renderTable(filteredVisits)" ${currentPage===1?'disabled':''}>اول</button>
+        <button class="btn btn-sm" onclick="currentPage=1;renderTable(filteredVisits)" ${currentPage===1?'disabled':''}>أول</button>
         <span style="font-weight:bold">${currentPage} / ${pages || 1}</span>
-        <button class="btn btn-sm" onclick="currentPage=${pages};renderTable(filteredVisits)" ${currentPage===pages||pages===0?'disabled':''}>اخر</button>
+        <button class="btn btn-sm" onclick="currentPage=${pages || 1};renderTable(filteredVisits)" ${currentPage===pages||pages===0?'disabled':''}>آخر</button>
     `;
 }
