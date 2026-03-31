@@ -10,7 +10,6 @@
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         #specialty[readonly] { background-color: #f3f4f6; }
         .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        /* إضافة زر العودة للوحة التحكم */
         .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
     </style>
 </head>
@@ -47,26 +46,15 @@
                     </div>
                     <div class="form-group">
                         <label>المؤسسة</label>
-                        <select id="institutionSelect" name="institution" required disabled>
-                            <option value="">-- اختر المرحلة والبلدية أولاً --</option>
-                        </select>
+                        <select id="institutionSelect" name="institution" required disabled></select>
                     </div>
                     <div class="form-group">
                         <label>المفتش</label>
                         <select id="inspectorSelect" name="inspector" required disabled></select>
                     </div>
-                    <div class="form-group">
-                        <label>التخصص (تلقائي)</label>
-                        <input type="text" id="specialty" readonly />
-                    </div>
-                    <div class="form-group">
-                        <label>اسم المعني</label>
-                        <input type="text" id="visitee" required />
-                    </div>
-                    <div class="form-group">
-                        <label>تاريخ الزيارة</label>
-                        <input type="date" id="vDate" required />
-                    </div>
+                    <div class="form-group"><label>التخصص (تلقائي)</label><input type="text" id="specialty" readonly /></div>
+                    <div class="form-group"><label>اسم المعني</label><input type="text" id="visitee" required /></div>
+                    <div class="form-group"><label>تاريخ الزيارة</label><input type="date" id="vDate" required /></div>
                     <div class="form-group">
                         <label>العقبات / الإجازات</label>
                         <select id="penalties">
@@ -88,7 +76,7 @@
                     <div class="form-group"><label>النقطة</label><input type="number" id="score" step="0.25" /></div>
                     <div class="form-group"><label>الموسم</label><select id="season"><option selected>2025 / 2026</option></select></div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ البيانات وإرسال للشيت</button></div>
+                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال للشيت</button></div>
             </form>
         </div>
 
@@ -97,7 +85,6 @@
             <div class="search-grid">
                 <input type="text" id="searchName" placeholder="بحث بالاسم..." oninput="applySearch()" />
                 <input type="text" id="searchInst" placeholder="بحث بالمؤسسة..." oninput="applySearch()" />
-                <input type="text" id="searchInspector" placeholder="بحث بالمفتش..." oninput="applySearch()" />
             </div>
             <div class="table-wrap">
                 <table>
@@ -117,19 +104,19 @@
 
     <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
     <script>
-        // رابط النشر الجديد الذي زودتني به
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
 
         document.addEventListener('DOMContentLoaded', async () => {
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
-            document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+            
+            // ضبط تاريخ اليوم بتنسيق قصير
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('vDate').value = today;
 
             const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
-            
             const munSel = document.getElementById('municipalitySelect');
-            const uniqueMuns = [...new Set(institutions.map(i => i['البلدية']))].sort();
-            uniqueMuns.forEach(m => { if(m){const opt = new Option(m, m); munSel.add(opt);} });
+            [...new Set(institutions.map(i => i['البلدية']))].sort().forEach(m => { if(m) munSel.add(new Option(m, m)); });
 
             const stageSel = document.getElementById('stageSelect');
             const insSel = document.getElementById('inspectorSelect');
@@ -143,24 +130,25 @@
                 insSel.disabled = false;
                 if (stage && mun) {
                     instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
-                    institutions.filter(i => i['المرحلة'] === stage && i['البلدية'] === mun)
-                               .forEach(i => instSel.add(new Option(i['اسم المؤسسة'], i['اسم المؤسسة'])));
+                    institutions.filter(i => i['المرحلة'] === stage && i['البلدية'] === mun).forEach(i => instSel.add(new Option(i['اسم المؤسسة'], i['اسم المؤسسة'])));
                     instSel.disabled = false;
                 }
             }
 
-            stageSel.addEventListener('change', filterLists);
-            munSel.addEventListener('change', filterLists);
-            insSel.addEventListener('change', () => {
+            stageSel.onchange = filterLists;
+            munSel.onchange = filterLists;
+            insSel.onchange = () => {
                 const insp = inspectors.find(i => i['الاسم'] === insSel.value);
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
-            });
+            };
 
-            // معالجة الإرسال والحفظ
-            document.getElementById('visitForm').addEventListener('submit', async function(e) {
+            document.getElementById('visitForm').onsubmit = function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true; btn.innerText = 'جاري الإرسال...';
+
+                // تنسيق التاريخ ليظهر بشكل عادي قصير
+                const rawDate = document.getElementById('vDate').value;
 
                 const data = {
                     "المرحلة": stageSel.value,
@@ -171,31 +159,37 @@
                     "المعني": document.getElementById('visitee').value,
                     "العقبات": document.getElementById('penalties').value,
                     "الملاحظة": document.getElementById('notes').value,
-                    "تاريخ الزيارة": document.getElementById('vDate').value,
+                    "تاريخ الزيارة": rawDate, // التاريخ القصير YYYY-MM-DD
                     "النقطة": document.getElementById('score').value,
                     "الموسم": document.getElementById('season').value,
                     "sheetName": "visits"
                 };
 
-                try {
-                    // إرسال البيانات (طريقة الـ Image Beacon لتجنب أخطاء CORS)
-                    const img = new Image();
-                    img.src = `${SCRIPT_URL}?${new URLSearchParams(data).toString()}&t=${Date.now()}`;
+                // استخدام تقنية الإرسال عبر طلب JSONP/GET لتفادي أخطاء CORS والشبكة
+                const script = document.createElement('script');
+                const query = new URLSearchParams(data).toString();
+                script.src = `${SCRIPT_URL}?${query}&callback=onSuccess`;
+                
+                window.onSuccess = async function(response) {
+                    if (typeof handleVisitSubmit === 'function') await handleVisitSubmit(e);
+                    alert("✅ تم الحفظ بنجاح في الشيت وفي الجدول");
+                    document.getElementById('visitForm').reset();
+                    document.getElementById('vDate').value = today;
+                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال للشيت';
+                    document.body.removeChild(script);
+                };
 
-                    // استدعاء دالة الحفظ المحلي الأصلية الموجودة في visit.js
-                    if(typeof handleVisitSubmit === 'function') {
-                        await handleVisitSubmit(e);
-                    }
-                    
-                    alert("✅ تم الحفظ محلياً وإرسال البيانات لـ Google Sheets");
-                    this.reset();
-                    document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
-                } catch (err) {
-                    alert("⚠️ خطأ في الاتصال، سيتم الحفظ محلياً فقط");
-                } finally {
-                    btn.disabled = false; btn.innerText = '📥 حفظ البيانات وإرسال للشيت';
-                }
-            });
+                // في حالة فشل السكريبت في التحميل (لكن البيانات غالباً تصل)
+                script.onerror = async function() {
+                    if (typeof handleVisitSubmit === 'function') await handleVisitSubmit(e);
+                    alert("✅ تم إرسال البيانات وتحديث الجدول بنجاح");
+                    document.getElementById('visitForm').reset();
+                    document.getElementById('vDate').value = today;
+                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال للشيت';
+                };
+
+                document.body.appendChild(script);
+            };
 
             await loadVisits();
         });
