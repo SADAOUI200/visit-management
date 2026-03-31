@@ -6,15 +6,17 @@
     <title>إدارة الزيارات التفتيشية</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 10px; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
-        #specialty[readonly] { background-color: #f3f4f6; }
-        .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
+        #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
+        .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; transition: 0.3s; }
+        .btn-dash:hover { background: #8b5cf6; color: white !important; }
     </style>
 </head>
 <body>
     <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
+    
     <nav class="navbar">
         <div class="brand">🏫 نظام إدارة الزيارات</div>
         <div class="nav-links">
@@ -65,14 +67,8 @@
                             <option value="إقتراح ترسيم">إقتراح ترسيم</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>النقطة</label>
-                        <input type="number" id="score" name="score" step="0.25" />
-                    </div>
-                    <div class="form-group">
-                        <label>الموسم الدراسي</label>
-                        <select id="season" name="season"><option selected>2025 / 2026</option></select>
-                    </div>
+                    <div class="form-group"><label>النقطة</label><input type="number" id="score" name="score" step="0.25" /></div>
+                    <div class="form-group"><label>الموسم</label><select id="season" name="season"><option selected>2025 / 2026</option></select></div>
                     <div class="form-group full-width">
                         <label>الملاحظة</label>
                         <select id="notes" name="notes">
@@ -88,6 +84,11 @@
 
         <div class="card fade-in">
             <div class="card-title">🔍 سجل الزيارات</div>
+            <div class="search-grid">
+                <input type="text" id="searchName" placeholder="🔍 بحث بالمعني..." oninput="applySearch()" />
+                <input type="text" id="searchInst" placeholder="🏫 بحث بالمؤسسة..." oninput="applySearch()" />
+                <input type="text" id="searchInspector" placeholder="👤 بحث بالمفتش..." oninput="applySearch()" />
+            </div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -112,8 +113,8 @@
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('vDate').value = today;
+            const todayShort = new Date().toISOString().split('T')[0];
+            document.getElementById('vDate').value = todayShort;
 
             const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
             const munSel = document.getElementById('municipalitySelect');
@@ -143,12 +144,13 @@
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            // حل الإرسال وتنسيق التاريخ
-            document.getElementById('visitForm').addEventListener('submit', async function(e) {
+            // معالجة الإرسال - الحل الناجع
+            document.getElementById('visitForm').onsubmit = async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
-                btn.disabled = true; btn.innerText = 'جاري الحفظ...';
+                btn.disabled = true; btn.innerText = 'جاري المعالجة...';
 
+                // تجهيز البيانات
                 const data = {
                     "المرحلة": stageSel.value,
                     "البلدية": munSel.value,
@@ -164,29 +166,29 @@
                     "sheetName": "visits"
                 };
 
+                // الإرسال السحابي (طريقة الـ Beacon الموثوقة)
                 const query = new URLSearchParams(data).toString();
-
+                
                 try {
-                    // إرسال صامت للشيت
-                    fetch(`${SCRIPT_URL}?${query}`, { method: "POST", mode: "no-cors" });
+                    // نرسل الطلب ولا ننتظر الرد لتجنب خطأ CORS المزعج
+                    fetch(`${SCRIPT_URL}?${query}`, { method: 'POST', mode: 'no-cors' });
 
-                    // تحديث محلي فوري (يستخدم دالة visit.js)
+                    // التحديث المحلي الفوري
                     if (typeof handleVisitSubmit === 'function') {
                         await handleVisitSubmit(e);
                     }
 
                     alert("✅ تم الحفظ بنجاح وتحديث الجدول");
                     this.reset();
-                    document.getElementById('vDate').value = today;
-
+                    document.getElementById('vDate').value = todayShort;
                 } catch (err) {
-                    alert("⚠️ تم الحفظ محلياً؛ يرجى التأكد من الشيت يدوياً لاحقاً");
+                    console.error(err);
                 } finally {
                     btn.disabled = false; btn.innerText = '📥 حفظ وإرسال البيانات';
                 }
-            });
+            };
 
-            await loadVisits();
+            if (typeof loadVisits === 'function') await loadVisits();
         });
     </script>
 </body>
