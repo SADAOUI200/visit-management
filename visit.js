@@ -15,12 +15,10 @@ let columnMapping = {};
 let currentPage = 1;
 const rowsPerPage = 10;
 
-// توليد معرف فريد
 function generateId() {
     return 'VIS-' + Math.random().toString(36).substr(2, 5).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
 }
 
-// تنسيق التاريخ ليكون YYYY-MM-DD
 function formatDate(val) {
     if (!val) return '-';
     const d = new Date(val);
@@ -43,7 +41,6 @@ function buildMapping(firstRow) {
     return mapping;
 }
 
-// ── جلب البيانات ──
 async function loadVisits() {
     showLoader();
     try {
@@ -57,7 +54,6 @@ async function loadVisits() {
     hideLoader();
 }
 
-// ── عرض الجدول ──
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
@@ -66,7 +62,6 @@ function renderTable(visits) {
     const paginated = visits.slice(start, start + rowsPerPage);
 
     tbody.innerHTML = paginated.map((v, i) => {
-        // تنظيف حقل النقطة إذا ظهر كتاريخ
         let score = getField(v, 'النقطة');
         if (score && score.toString().includes('GMT')) score = '0';
 
@@ -98,47 +93,46 @@ function renderTable(visits) {
     updatePaginationControls(visits.length);
 }
 
-// ── الإرسال المضمون (الحل هنا) ──
+// ── معالجة الحفظ المضمونة ──
 async function handleVisitSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const editId = document.getElementById('editId').value;
     const isEdit = !!editId;
 
-    // منع التكرار
+    const visitData = {
+        'action': isEdit ? 'update' : 'insert',
+        'sheetName': 'visits',
+        'المعرف': isEdit ? editId : generateId(),
+        'timestamp': new Date().toISOString(),
+        'اسم المفتش': document.getElementById('inspectorSelect').value,
+        'التخصص': document.getElementById('specialty').value,
+        'المرحلة': form.stage.value,
+        'اسم المعني بالزيارة': form.visitee.value,
+        'الرتبة': form.rank.value,
+        'الدرجة': form.grade.value,
+        'المؤسسة': document.getElementById('institutionSelect').value,
+        'تاريخ الزيارة': form.visitDate.value,
+        'نوع الزيارة': form.visitType.value,
+        'النقطة': form.score.value || '0',
+        'العقبات': form.penalties.value,
+        'الملاحظة': form.notes.value,
+        'الموسم الدراسي': form.season.value
+    };
+
     if (!isEdit) {
         const duplicate = allVisits.some(v => 
-            String(getField(v, 'اسم المعني بالزيارة')).trim() === form.visitee.value.trim() && 
-            formatDate(getField(v, 'تاريخ الزيارة')) === form.visitDate.value
+            String(getField(v, 'اسم المعني بالزيارة')).trim() === visitData['اسم المعني بالزيارة'].trim() && 
+            formatDate(getField(v, 'تاريخ الزيارة')) === visitData['تاريخ الزيارة']
         );
-        if (duplicate) return alert('⚠️ هذا المعني مسجل بالفعل في هذا التاريخ!');
+        if (duplicate) return alert('⚠️ مسجل بالفعل في هذا التاريخ!');
     }
-
-    // تجميع البيانات في FormData لإرسالها بالشكل التقليدي
-    const fd = new FormData();
-    fd.append('action', isEdit ? 'update' : 'insert');
-    fd.append('sheetName', 'visits');
-    fd.append('المعرف', isEdit ? editId : generateId());
-    fd.append('timestamp', new Date().toISOString());
-    fd.append('اسم المفتش', document.getElementById('inspectorSelect').value);
-    fd.append('التخصص', document.getElementById('specialty').value);
-    fd.append('المرحلة', form.stage.value);
-    fd.append('اسم المعني بالزيارة', form.visitee.value);
-    fd.append('الرتبة', form.rank.value);
-    fd.append('الدرجة', form.grade.value);
-    fd.append('المؤسسة', document.getElementById('institutionSelect').value);
-    fd.append('تاريخ الزيارة', form.visitDate.value);
-    fd.append('نوع الزيارة', form.visitType.value);
-    fd.append('النقطة', form.score.value);
-    fd.append('العقبات', form.penalties.value);
-    fd.append('الملاحظة', form.notes.value);
-    fd.append('الموسم الدراسي', form.season.value);
 
     showLoader();
     try {
         const SCRIPT_URL = getSheetURL('visits');
-        // تحويل FormData إلى URLSearchParams لضمان وصولها للسكريبت كـ Parameters
-        const params = new URLSearchParams(fd).toString();
+        // إرسال البيانات كمعاملات استعلام لضمان الحفظ
+        const params = new URLSearchParams(visitData).toString();
         
         await fetch(`${SCRIPT_URL}?${params}`, {
             method: 'POST',
@@ -155,7 +149,6 @@ async function handleVisitSubmit(e) {
     hideLoader();
 }
 
-// ── باقي الوظائف (تعديل، حذف، بحث) ──
 function editVisit(id) {
     const v = allVisits.find(visit => getField(visit, 'المعرف') === id);
     if (!v) return;
@@ -174,7 +167,7 @@ function editVisit(id) {
 }
 
 async function deleteVisit(id) {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
+    if (!confirm('هل أنت متأكد؟')) return;
     showLoader();
     try {
         const url = `${getSheetURL('visits')}?action=delete&id=${id}&sheetName=visits`;
