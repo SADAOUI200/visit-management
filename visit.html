@@ -10,8 +10,7 @@
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
         .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; transition: 0.3s; }
-        .btn-dash:hover { background: #8b5cf6; color: white !important; }
+        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -78,16 +77,18 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال البيانات</button></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال البيانات</button>
+                </div>
             </form>
         </div>
 
         <div class="card fade-in">
             <div class="card-title">🔍 سجل الزيارات</div>
             <div class="search-grid">
-                <input type="text" id="searchName" placeholder="🔍 بحث بالمعني..." oninput="applySearch()" />
+                <input type="text" id="searchName" placeholder="👤 بحث بالمعني..." oninput="applySearch()" />
                 <input type="text" id="searchInst" placeholder="🏫 بحث بالمؤسسة..." oninput="applySearch()" />
-                <input type="text" id="searchInspector" placeholder="👤 بحث بالمفتش..." oninput="applySearch()" />
+                <input type="text" id="searchInspector" placeholder="📋 بحث بالمفتش..." oninput="applySearch()" />
             </div>
             <div class="table-wrap">
                 <table>
@@ -105,7 +106,9 @@
         </div>
     </div>
 
-    <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
+    <script src="app.js"></script>
+    <script src="data.js"></script>
+    <script src="visit.js"></script>
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
 
@@ -113,9 +116,10 @@
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
-            const todayShort = new Date().toISOString().split('T')[0];
-            document.getElementById('vDate').value = todayShort;
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('vDate').value = today;
 
+            // جلب البيانات الأساسية
             const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
             const munSel = document.getElementById('municipalitySelect');
             [...new Set(institutions.map(i => i['البلدية']))].sort().forEach(m => { if(m) munSel.add(new Option(m, m)); });
@@ -144,13 +148,14 @@
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            // معالجة الإرسال - الحل الناجع
+            // تشغيل الإرسال
             document.getElementById('visitForm').onsubmit = async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
-                btn.disabled = true; btn.innerText = 'جاري المعالجة...';
+                btn.disabled = true;
+                btn.innerText = '⏳ جاري المعالجة...';
 
-                // تجهيز البيانات
+                // تجهيز البيانات للإرسال للسحابة
                 const data = {
                     "المرحلة": stageSel.value,
                     "البلدية": munSel.value,
@@ -166,25 +171,28 @@
                     "sheetName": "visits"
                 };
 
-                // الإرسال السحابي (طريقة الـ Beacon الموثوقة)
                 const query = new URLSearchParams(data).toString();
-                
+
                 try {
-                    // نرسل الطلب ولا ننتظر الرد لتجنب خطأ CORS المزعج
+                    // 1. الإرسال الصامت للشيت
                     fetch(`${SCRIPT_URL}?${query}`, { method: 'POST', mode: 'no-cors' });
 
-                    // التحديث المحلي الفوري
+                    // 2. التحديث المحلي (استدعاء مباشر للدالة من visit.js)
                     if (typeof handleVisitSubmit === 'function') {
                         await handleVisitSubmit(e);
+                    } else {
+                        console.error("دالة handleVisitSubmit غير موجودة في visit.js");
                     }
 
-                    alert("✅ تم الحفظ بنجاح وتحديث الجدول");
+                    alert("✅ تم تسجيل الزيارة بنجاح");
                     this.reset();
-                    document.getElementById('vDate').value = todayShort;
+                    document.getElementById('vDate').value = today;
                 } catch (err) {
-                    console.error(err);
+                    console.error("خطأ:", err);
+                    alert("⚠️ حدث خطأ أثناء المعالجة");
                 } finally {
-                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال البيانات';
+                    btn.disabled = false;
+                    btn.innerText = '📥 حفظ وإرسال البيانات';
                 }
             };
 
