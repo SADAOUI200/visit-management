@@ -3,24 +3,20 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>نظام إدارة الزيارات التفتيشية</title>
+    <title>إدارة الزيارات التفتيشية</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        /* تنسيقات إضافية لضمان استقرار الواجهة */
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
-        .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 10px; }
+        .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
-        .action-btns { display: flex; gap: 5px; }
-        .btn-edit { background-color: #f59e0b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-delete { background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
+        .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
     </style>
 </head>
 <body>
     <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
-    
     <nav class="navbar">
-        <div class="brand">🏫 إدارة الزيارات الميدانية</div>
+        <div class="brand">🏫 نظام إدارة الزيارات</div>
         <div class="nav-links">
             <span id="navUserInfo"></span>
             <a href="dashboard.html" class="btn-dash">⚙️ لوحة التحكم</a>
@@ -30,9 +26,8 @@
 
     <div class="container">
         <div class="card fade-in">
-            <div class="card-title" id="formTitle">✏️ تسجيل زيارة جديدة</div>
+            <div class="card-title">✏️ تسجيل زيارة جديدة</div>
             <form id="visitForm">
-                <input type="hidden" id="editId">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>المرحلة التعليمية</label>
@@ -57,166 +52,141 @@
                         <label>المفتش</label>
                         <select id="inspectorSelect" name="inspector" required disabled></select>
                     </div>
-                    <div class="form-group">
-                        <label>التخصص</label>
-                        <input type="text" id="specialty" readonly />
-                    </div>
-                    <div class="form-group">
-                        <label>اسم المعني بالزيارة</label>
-                        <input type="text" id="visitee" required />
-                    </div>
-                    <div class="form-group">
-                        <label>الرتبة</label>
-                        <input type="text" id="rank" />
-                    </div>
-                    <div class="form-group">
-                        <label>الدرجة</label>
-                        <input type="text" id="grade" />
-                    </div>
+                    <div class="form-group"><label>التخصص</label><input type="text" id="specialty" name="specialty" readonly /></div>
+                    <div class="form-group"><label>اسم المعني</label><input type="text" name="visitee" id="visitee" required /></div>
+                    
+                    <div class="form-group"><label>الرتبة</label><input type="text" name="rank" /></div>
+                    <div class="form-group"><label>الدرجة</label><input type="text" name="grade" /></div>
                     <div class="form-group">
                         <label>نوع الزيارة</label>
-                        <select id="visitType">
+                        <select name="visitType">
                             <option value="توجيهية">توجيهية</option>
                             <option value="تثبيت">تثبيت</option>
                             <option value="ترقية">ترقية</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>تاريخ الزيارة</label>
-                        <input type="date" id="vDate" required />
-                    </div>
+
+                    <div class="form-group"><label>تاريخ الزيارة</label><input type="date" name="visitDate" id="vDate" required /></div>
                     <div class="form-group">
                         <label>العقبات / الإجازات</label>
-                        <select id="penalties">
+                        <select name="penalties" id="penalties">
                             <option value="لا شيء">لا شيء</option>
                             <option value="إقتراح إنذار">إقتراح إنذار</option>
                             <option value="إقتراح توبيخ">إقتراح توبيخ</option>
                             <option value="إقتراح تشجيع">إقتراح تشجيع</option>
+                            <option value="إقتراح ترسيم">إقتراح ترسيم</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>النقطة</label>
-                        <input type="number" id="score" step="0.25" />
-                    </div>
-                    <div class="form-group">
-                        <label>الموسم الدراسي</label>
-                        <select id="season">
-                            <option value="2024 / 2025">2024 / 2025</option>
-                            <option value="2025 / 2026" selected>2025 / 2026</option>
-                            <option value="2026 / 2027">2026 / 2027</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>النقطة</label><input type="number" name="score" id="score" step="0.25" /></div>
+                    <div class="form-group"><label>الموسم</label><select name="season" id="season"><option selected>2025 / 2026</option></select></div>
+                    
                     <div class="form-group full-width">
                         <label>الملاحظة</label>
-                        <select id="notes">
-                            <option value="العمل بالتوجيهات والتوصيات المقدمة">العمل بالتوجيهات والتوصيات المقدمة</option>
-                            <option value="تثمين الجهد المبذول">تثمين الجهد المبذول</option>
-                            <option value="تدارك النقائص المسجلة">تدارك النقائص المسجلة</option>
+                        <select name="notes" id="notes">
+                            <option value="العمل بالتوجيهات والتوصيات المقدمة">1- العمل بالتوجيهات والتوصيات المقدمة</option>
+                            <option value="تثمين الجهد المبذول">2- تثمين الجهد المبذول</option>
+                            <option value="تدارك النقائص المسجلة">3- تدارك النقائص المسجلة</option>
                         </select>
                     </div>
                 </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ البيانات</button>
-                    <button type="button" class="btn btn-secondary" id="cancelBtn" style="display:none;" onclick="resetForm()">إلغاء التعديل</button>
-                </div>
+                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال البيانات</button></div>
             </form>
         </div>
 
         <div class="card fade-in">
-            <div class="card-title">🔍 سجل الزيارات الميدانية</div>
+            <div class="card-title">🔍 سجل الزيارات</div>
             <div class="search-grid">
-                <input type="text" id="searchName" placeholder="👤 بحث بالاسم أو المؤسسة..." oninput="applySearch()" />
+                <input type="text" id="searchName" placeholder="بحث بالمعني..." oninput="applySearch()" />
+                <input type="text" id="searchInst" placeholder="بحث بالمؤسسة..." oninput="applySearch()" />
+                <input type="text" id="searchInspector" placeholder="بحث بالمفتش..." oninput="applySearch()" />
             </div>
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>المعرف</th>
-                            <th>التوقيت</th>
-                            <th>المفتش</th>
-                            <th>التخصص</th>
-                            <th>المرحلة</th>
-                            <th>المعني</th>
-                            <th>الرتبة</th>
-                            <th>الدرجة</th>
-                            <th>المؤسسة</th>
-                            <th>التاريخ</th>
-                            <th>النوع</th>
-                            <th>النقطة</th>
-                            <th>العقبات</th>
-                            <th>الموسم</th>
-                            <th>الإجراءات</th>
+                            <th>#</th><th>المعرف</th><th>التوقيت</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
+                            <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>التاريخ</th>
+                            <th>النوع</th><th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
                         </tr>
                     </thead>
-                    <tbody id="visitsTableBody">
-                        </tbody>
+                    <tbody id="visitsTableBody"></tbody>
                 </table>
             </div>
             <div id="paginationControls" class="pagination"></div>
         </div>
     </div>
 
-    <script src="app.js"></script>
-    <script src="data.js"></script>
-    <script src="visit.js"></script>
-
+    <script src="app.js"></script><script src="data.js"></script><script src="visit.js"></script>
     <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
+
         document.addEventListener('DOMContentLoaded', async () => {
-            // التحقق من الجلسة (إذا كانت الوظيفة موجودة في app.js)
-            if (typeof requireAuth === 'function') {
-                const session = requireAuth(['admin', 'inspector', 'manager']);
-                document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
-            }
-
-            // ضبط تاريخ اليوم
-            document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
-
-            // جلب بيانات المفتشين والمؤسسات
-            const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
+            const session = requireAuth(['admin', 'inspector', 'manager']);
+            document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
+            // تنسيق التاريخ القصير الافتراضي
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('vDate').value = today;
+
+            const [inspectors, institutions] = await Promise.all([fetchInspectors(), fetchInstitutions()]);
             const munSel = document.getElementById('municipalitySelect');
+            [...new Set(institutions.map(i => i['البلدية']))].sort().forEach(m => { if(m) munSel.add(new Option(m, m)); });
+
             const stageSel = document.getElementById('stageSelect');
             const insSel = document.getElementById('inspectorSelect');
             const instSel = document.getElementById('institutionSelect');
 
-            // ملء البلديات
-            const munList = [...new Set(institutions.map(i => i['البلدية']))].sort();
-            munList.forEach(m => { if(m) munSel.add(new Option(m, m)); });
-
             function filterLists() {
                 const stage = stageSel.value;
                 const mun = munSel.value;
-                
-                // فلترة المفتشين
                 insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
                 inspectors.filter(i => i['المرحلة'] === stage).forEach(i => insSel.add(new Option(i['الاسم'], i['الاسم'])));
                 insSel.disabled = false;
-                
-                // فلترة المؤسسات
                 if (stage && mun) {
                     instSel.innerHTML = '<option value="">-- اختر المؤسسة --</option>';
-                    institutions.filter(i => i['المرحلة'] === stage && i['البلدية'] === mun)
-                               .forEach(i => instSel.add(new Option(i['اسم المؤسسة'], i['اسم المؤسسة'])));
+                    institutions.filter(i => i['المرحلة'] === stage && i['البلدية'] === mun).forEach(i => instSel.add(new Option(i['اسم المؤسسة'], i['اسم المؤسسة'])));
                     instSel.disabled = false;
                 }
             }
 
             stageSel.onchange = filterLists;
             munSel.onchange = filterLists;
-            
             insSel.onchange = () => {
                 const insp = inspectors.find(i => i['الاسم'] === insSel.value);
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            // ربط نموذج الإرسال بدالة المعالجة في visit.js
-            document.getElementById('visitForm').addEventListener('submit', handleVisitSubmit);
-            
-            // تحميل البيانات في الجدول عند فتح الصفحة
-            if (typeof loadVisits === 'function') {
-                await loadVisits();
-            }
+            // معالجة الإرسال
+            document.getElementById('visitForm').onsubmit = async function(e) {
+                e.preventDefault();
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true; btn.innerText = 'جاري الإرسال...';
+
+                try {
+                    // 1. الإرسال السحابي الصامت (يتجاوز CORS)
+                    const formData = new FormData(this);
+                    const params = new URLSearchParams();
+                    formData.forEach((value, key) => params.append(key, value));
+                    params.append("sheetName", "visits");
+
+                    fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'POST', mode: 'no-cors' });
+
+                    // 2. التحديث المحلي عبر visit.js
+                    if (typeof handleVisitSubmit === 'function') {
+                        await handleVisitSubmit(e);
+                    }
+
+                    alert("✅ تم الحفظ بنجاح (التاريخ مختصر)");
+                    this.reset();
+                    document.getElementById('vDate').value = today;
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال البيانات';
+                }
+            };
+
+            await loadVisits();
         });
     </script>
 </body>

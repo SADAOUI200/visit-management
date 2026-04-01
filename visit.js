@@ -1,9 +1,7 @@
 /**
- * نظام إدارة الزيارات التفتيشية - المطور: سعداوي زين العابدين
+ * نظام إدارة الزيارات التفتيشية - نسخة مصلحة التكوين والتفتيش
+ * المطور: سعداوي زين العابدين
  */
-
-// الرابط المباشر لضمان عدم حدوث انقطاع في الاتصال
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_S2kmEp4M2cDBb5RIkNwhSJroFGQpgKsm7rInYqqIblGzex5zzR5xUN2dhEU7eFLR/exec';
 
 const FIELD_NAMES = [
     'المعرف', 'timestamp', 'اسم المفتش', 'التخصص', 'المرحلة',
@@ -15,17 +13,28 @@ const FIELD_NAMES = [
 let allVisits = [];
 let filteredVisits = [];
 let columnMapping = {};
+
+// ── متغيرات الترقيم (Pagination) ──────────────────────────────
 let currentPage = 1;
 const rowsPerPage = 10;
 
 function generateId() {
-    return 'VIS-' + Date.now().toString(36).toUpperCase();
+    return 'VIS-' + Math.random().toString(36).substr(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
 }
 
-function formatDate(val) {
-    if (!val || val === '-') return '-';
-    const d = new Date(val);
-    return isNaN(d) ? val : d.toISOString().split('T')[0];
+function normalizeKey(str) {
+    return String(str || '').normalize('NFC').trim().replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, '').replace(/\s+/g, ' ');
+}
+
+function buildMapping(firstRow) {
+    const mapping = {};
+    const actualKeys = Object.keys(firstRow || {});
+    FIELD_NAMES.forEach(f => {
+        const normF = normalizeKey(f);
+        const match = actualKeys.find(k => normalizeKey(k) === normF);
+        if (match) mapping[f] = match;
+    });
+    return mapping;
 }
 
 function getField(row, fieldName) {
@@ -33,50 +42,44 @@ function getField(row, fieldName) {
     return row[actualKey] !== undefined ? row[actualKey] : '';
 }
 
-function buildMapping(firstRow) {
-    const mapping = {};
-    const actualKeys = Object.keys(firstRow || {});
-    FIELD_NAMES.forEach(f => {
-        const match = actualKeys.find(k => k.trim() === f.trim());
-        if (match) mapping[f] = match;
-    });
-    return mapping;
-}
-
-// جلب البيانات من الشيت
-async function loadVisits() {
-    if (window.showLoader) showLoader();
+// ── جلب البيانات ──────────────────────────────────────────────
+async function fetchVisits() {
+    if (typeof showLoader === 'function') showLoader();
     try {
-        const response = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits&t=${Date.now()}`);
-        const data = await response.json();
-        allVisits = Array.isArray(data) ? data : [];
-        if (allVisits.length > 0) columnMapping = buildMapping(allVisits[0]);
-        applySearch();
+        const url = getSheetURL('visits') + '?action=get&sheet=visit';
+        const res = await fetch(url);
+        const raw = await res.json();
+        let data = Array.isArray(raw) ? raw : (raw.data || []);
+        if (data.length > 0) columnMapping = buildMapping(data[0]);
+        if (typeof hideLoader === 'function') hideLoader();
+        return { ok: true, data };
     } catch (err) {
-        console.error("خطأ في جلب البيانات:", err);
+        console.error("Fetch error:", err);
+        if (typeof hideLoader === 'function') hideLoader();
+        return { ok: false, data: [] };
     }
-    if (window.hideLoader) hideLoader();
 }
 
-// عرض الجدول مع الترقيم
+// ── عرض الجدول مع نظام الترقيم (Pagination) ───────────────────
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
     if (!tbody) return;
 
     if (!visits || visits.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;">لا توجد بيانات حالياً</td></tr>';
-        updatePagination(0);
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">لا توجد سجلات مطابقة</td></tr>';
+        updatePaginationControls(0);
         return;
     }
 
     const start = (currentPage - 1) * rowsPerPage;
-    const paginated = visits.slice(start, start + rowsPerPage);
+    const end = start + rowsPerPage;
+    const paginatedVisits = visits.slice(start, end);
 
-    tbody.innerHTML = paginated.map((v, i) => `
+    tbody.innerHTML = paginatedVisits.map((v, i) => `
         <tr>
             <td>${start + i + 1}</td>
             <td title="${getField(v, 'المعرف')}">${(getField(v, 'المعرف') || '').substring(0, 8)}</td>
-            <td>${getField(v, 'timestamp')}</td>
+            <td>${formatDate(getField(v, 'timestamp'))}</td>
             <td>${getField(v, 'اسم المفتش')}</td>
             <td>${getField(v, 'التخصص')}</td>
             <td>${getField(v, 'المرحلة')}</td>
@@ -87,88 +90,125 @@ function renderTable(visits) {
             <td>${formatDate(getField(v, 'تاريخ الزيارة'))}</td>
             <td>${getField(v, 'نوع الزيارة')}</td>
             <td><span class="badge badge-accent">${getField(v, 'النقطة')}</span></td>
-            <td>${getField(v, 'العقبات')}</td>
+            <td>${getField(v, 'العقبات') || '-'}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝</button>
-                    <button class="btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️</button>
-                </div>
-            </td>
+            <td class="note-cell">${getField(v, 'الملاحظة') || '-'}</td>
         </tr>`).join('');
-    updatePagination(visits.length);
+
+    updatePaginationControls(visits.length);
 }
 
-// نظام الترقيم (أزرار السابق والتالي)
-function updatePagination(total) {
-    const pages = Math.ceil(total / rowsPerPage);
+function updatePaginationControls(totalRows) {
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
     const container = document.getElementById('paginationControls');
     if (!container) return;
-    
+
     container.innerHTML = `
+        <button class="btn btn-sm" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>البداية</button>
         <button class="btn btn-sm" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>السابق</button>
-        <span style="margin: 0 15px; font-weight: bold;">صفحة ${currentPage} من ${pages || 1}</span>
-        <button class="btn btn-sm" onclick="changePage(1)" ${currentPage >= pages ? 'disabled' : ''}>التالي</button>
+        <span style="margin: 0 10px; font-weight: bold;">${currentPage} / ${totalPages || 1}</span>
+        <button class="btn btn-sm" onclick="changePage(1)" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>التالي</button>
+        <button class="btn btn-sm" onclick="goToPage(${totalPages})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>النهاية</button>
     `;
 }
 
-function changePage(step) {
-    currentPage += step;
-    renderTable(filteredVisits);
-}
+function changePage(step) { currentPage += step; renderTable(filteredVisits); }
+function goToPage(p) { currentPage = p; renderTable(filteredVisits); }
 
-// معالجة الحفظ
-async function handleVisitSubmit(e) {
-    e.preventDefault();
-    const editId = document.getElementById('editId').value;
-    const isEdit = !!editId;
-
-    const visitData = {
-        'action': isEdit ? 'update' : 'insert',
-        'sheetName': 'visits',
-        'المعرف': isEdit ? editId : generateId(),
-        'timestamp': new Date().toLocaleString('ar-DZ'),
-        'اسم المفتش': document.getElementById('inspectorSelect').value,
-        'التخصص': document.getElementById('specialty').value,
-        'المرحلة': document.getElementById('stageSelect').value,
-        'اسم المعني بالزيارة': document.getElementById('visitee').value,
-        'الرتبة': document.getElementById('rank').value,
-        'الدرجة': document.getElementById('grade').value,
-        'المؤسسة': document.getElementById('institutionSelect').value,
-        'تاريخ الزيارة': document.getElementById('vDate').value,
-        'نوع الزيارة': document.getElementById('visitType').value,
-        'النقطة': document.getElementById('score').value || '0',
-        'العقبات': document.getElementById('penalties').value,
-        'الملاحظة': document.getElementById('notes').value,
-        'الموسم الدراسي': document.getElementById('season').value
-    };
-
-    if (window.showLoader) showLoader();
-    try {
-        const params = new URLSearchParams(visitData).toString();
-        await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
-        alert(isEdit ? '✅ تم التعديل بنجاح' : '✅ تم الحفظ بنجاح');
-        resetForm();
-        setTimeout(loadVisits, 1000); // تحديث الجدول بعد الحفظ
-    } catch (err) {
-        alert('❌ فشل في الاتصال');
-    }
-    if (window.hideLoader) hideLoader();
+async function loadVisits() {
+    const result = await fetchVisits();
+    allVisits = result.data;
+    applySearch();
 }
 
 function applySearch() {
-    const n = (document.getElementById('searchName')?.value || '').toLowerCase();
-    filteredVisits = allVisits.filter(v => 
-        String(getField(v, 'اسم المعني بالزيارة')).toLowerCase().includes(n) ||
-        String(getField(v, 'المؤسسة')).toLowerCase().includes(n)
-    );
+    const nameQ = (document.getElementById('searchName')?.value || '').toLowerCase();
+    const instQ = (document.getElementById('searchInst')?.value || '').toLowerCase();
+    const inspQ = (document.getElementById('searchInspector')?.value || '').toLowerCase();
+    
+    filteredVisits = allVisits.filter(v => {
+        const name = (getField(v, 'اسم المعني بالزيارة') || '').toLowerCase();
+        const inst = (getField(v, 'المؤسسة') || '').toLowerCase();
+        const insp = (getField(v, 'اسم المفتش') || '').toLowerCase();
+        return name.includes(nameQ) && inst.includes(instQ) && insp.includes(inspQ);
+    });
     currentPage = 1;
     renderTable(filteredVisits);
 }
 
-function resetForm() {
-    document.getElementById('visitForm').reset();
-    document.getElementById('editId').value = '';
-    document.getElementById('formTitle').innerText = '✏️ تسجيل زيارة جديدة';
-    document.getElementById('submitBtn').innerText = '📥 حفظ البيانات';
+/**
+ * 1. وظيفة اختصار التاريخ (YYYY-MM-DD)
+ */
+function formatDate(val) {
+    if (!val) return '-';
+    const d = new Date(val);
+    if (isNaN(d)) return val;
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * 2. معالجة الإرسال مع شرط منع التكرار
+ */
+async function handleVisitSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    
+    // البيانات الحالية المطلوب فحصها
+    const currentVisitee = (form.visitee?.value || '').trim();
+    const currentDate = form.visitDate?.value;
+
+    // شرط منع التكرار: البحث في البيانات المحملة (allVisits)
+    const isDuplicate = allVisits.some(v => {
+        const existingName = (getField(v, 'اسم المعني بالزيارة') || '').trim();
+        const existingDate = formatDate(getField(v, 'تاريخ الزيارة')); // توحيد الصيغة للمقارنة
+        return existingName === currentVisitee && existingDate === currentDate;
+    });
+
+    if (isDuplicate) {
+        alert(`⚠️ خطأ: تم تسجيل زيارة لهذا الشخص (${currentVisitee}) في هذا التاريخ (${currentDate}) مسبقاً.`);
+        return; 
+    }
+
+    const visitData = {
+        'المعرف': generateId(),
+        'timestamp': new Date().toISOString(),
+        'اسم المفتش': document.getElementById('inspectorSelect').value,
+        'التخصص': document.getElementById('specialty').value,
+        'المرحلة': form.stage.value,
+        'اسم المعني بالزيارة': currentVisitee,
+        'الرتبة': form.rank?.value || '-',
+        'الدرجة': form.grade?.value || '-',
+        'المؤسسة': document.getElementById('institutionSelect').value,
+        'تاريخ الزيارة': currentDate,
+        'نوع الزيارة': form.visitType?.value || 'توجيهية',
+        'النقطة': form.score?.value || '0',
+        'العقبات': form.penalties?.value || 'لا شيء',
+        'الملاحظة': form.notes?.value || '-',
+        'الموسم الدراسي': form.season?.value || '2025 / 2026'
+    };
+
+    if (typeof showLoader === 'function') showLoader();
+    try {
+        await fetch(getSheetURL('visits'), {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'insert', sheet: 'visit', data: visitData })
+        });
+        
+        if (typeof showToast === 'function') showToast('✅ تم الحفظ بنجاح');
+        else alert('✅ تم الحفظ بنجاح');
+        
+        form.reset();
+        // إعادة تعيين تاريخ اليوم
+        if(document.getElementById('vDate')) document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+        
+        await loadVisits(); 
+    } catch (err) { 
+        console.error("Submit error:", err); 
+    }
+    if (typeof hideLoader === 'function') hideLoader();
 }
