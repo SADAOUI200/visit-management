@@ -7,10 +7,16 @@
     <link rel="stylesheet" href="style.css" />
     <style>
         .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 10px; }
-        .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
+        .note-cell { white-space: normal !important; min-width: 200px; font-size: 0.85rem; color: #444; }
         #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
         .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
         .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
+        /* تنسيق أزرار الإجراءات الجديدة */
+        .action-btns { display: flex; gap: 5px; justify-content: center; }
+        .btn-edit { background: #f59e0b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+        .btn-edit:hover { background: #d97706; }
+        .btn-delete { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+        .btn-delete:hover { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -26,8 +32,10 @@
 
     <div class="container">
         <div class="card fade-in">
-            <div class="card-title">✏️ تسجيل زيارة جديدة</div>
+            <div class="card-title" id="formTitle">✏️ تسجيل زيارة جديدة</div>
             <form id="visitForm">
+                <input type="hidden" id="editId" name="editId">
+                
                 <div class="form-grid">
                     <div class="form-group">
                         <label>المرحلة التعليمية</label>
@@ -55,11 +63,11 @@
                     <div class="form-group"><label>التخصص</label><input type="text" id="specialty" name="specialty" readonly /></div>
                     <div class="form-group"><label>اسم المعني</label><input type="text" name="visitee" id="visitee" required /></div>
                     
-                    <div class="form-group"><label>الرتبة</label><input type="text" name="rank" /></div>
-                    <div class="form-group"><label>الدرجة</label><input type="text" name="grade" /></div>
+                    <div class="form-group"><label>الرتبة</label><input type="text" name="rank" id="rank" /></div>
+                    <div class="form-group"><label>الدرجة</label><input type="text" name="grade" id="grade" /></div>
                     <div class="form-group">
                         <label>نوع الزيارة</label>
-                        <select name="visitType">
+                        <select name="visitType" id="visitType">
                             <option value="توجيهية">توجيهية</option>
                             <option value="تثبيت">تثبيت</option>
                             <option value="ترقية">ترقية</option>
@@ -89,7 +97,10 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال البيانات</button></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-accent" id="submitBtn">📥 حفظ وإرسال البيانات</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn" style="display:none;" onclick="resetForm()">إلغاء التعديل</button>
+                </div>
             </form>
         </div>
 
@@ -107,6 +118,7 @@
                             <th>#</th><th>المعرف</th><th>التوقيت</th><th>المفتش</th><th>التخصص</th><th>المرحلة</th>
                             <th>المعني</th><th>الرتبة</th><th>الدرجة</th><th>المؤسسة</th><th>التاريخ</th>
                             <th>النوع</th><th>النقطة</th><th>العقبات</th><th>الموسم</th><th>الملاحظة</th>
+                            <th>الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="visitsTableBody"></tbody>
@@ -124,7 +136,6 @@
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
-            // تنسيق التاريخ القصير الافتراضي
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('vDate').value = today;
 
@@ -156,35 +167,8 @@
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            // معالجة الإرسال
-            document.getElementById('visitForm').onsubmit = async function(e) {
-                e.preventDefault();
-                const btn = document.getElementById('submitBtn');
-                btn.disabled = true; btn.innerText = 'جاري الإرسال...';
-
-                try {
-                    // 1. الإرسال السحابي الصامت (يتجاوز CORS)
-                    const formData = new FormData(this);
-                    const params = new URLSearchParams();
-                    formData.forEach((value, key) => params.append(key, value));
-                    params.append("sheetName", "visits");
-
-                    fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'POST', mode: 'no-cors' });
-
-                    // 2. التحديث المحلي عبر visit.js
-                    if (typeof handleVisitSubmit === 'function') {
-                        await handleVisitSubmit(e);
-                    }
-
-                    alert("✅ تم الحفظ بنجاح (التاريخ مختصر)");
-                    this.reset();
-                    document.getElementById('vDate').value = today;
-                } catch (err) {
-                    console.error(err);
-                } finally {
-                    btn.disabled = false; btn.innerText = '📥 حفظ وإرسال البيانات';
-                }
-            };
+            // تم ربط النموذج مباشرة بـ handleVisitSubmit في visit.js
+            document.getElementById('visitForm').onsubmit = handleVisitSubmit;
 
             await loadVisits();
         });
