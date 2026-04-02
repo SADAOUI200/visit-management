@@ -101,6 +101,10 @@ function renderTable(visits) {
             <td>${getField(v, 'العقوبات') || 'لا شيء'}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td class="note-cell">${getField(v, 'الملاحظة') || '-'}</td>
+            <td class="action-btns">
+            <button class="btn-edit" onclick="editVisit('${getField(v, 'المعرف')}')">📝 تعديل</button>
+            <button class="btn-delete" onclick="deleteVisit('${getField(v, 'المعرف')}')">🗑️ حذف</button>
+            </td>
         </tr>`).join('');
 
     updatePaginationControls(visits.length);
@@ -217,6 +221,46 @@ async function handleVisitSubmit(e) {
         await loadVisits(); 
     } catch (err) { 
         console.error("Submit error:", err); 
+    }
+    if (typeof hideLoader === 'function') hideLoader();
+}
+// أولاً: دالة التعديل (تعبئة الحقول بالبيانات)
+function editVisit(id) {
+    const v = allVisits.find(item => getField(item, 'المعرف') === id);
+    if (!v) return;
+
+    // تعبئة المعرف في حقل مخفي (تأكد من وجود <input type="hidden" id="editId"> في HTML)
+    document.getElementById('editId').value = id;
+    
+    // تعبئة باقي الحقول
+    document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
+    document.getElementById('rank').value = getField(v, 'الرتبة');
+    document.getElementById('grade').value = getField(v, 'الدرجة');
+    document.getElementById('score').value = formatScore(getField(v, 'النقطة'));
+    document.getElementById('penalties').value = getField(v, 'العقبات') || 'لا شيء';
+    
+    // تغيير نص زر الحفظ للتنبيه أننا في وضع التعديل
+    document.getElementById('formTitle').innerText = '📝 تعديل بيانات الزيارة';
+    document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
+    
+    // الصعود لأعلى الصفحة لبدء التعديل
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ثانياً: دالة الحذف (الحذف من الشيت)
+async function deleteVisit(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) return;
+    
+    if (typeof showLoader === 'function') showLoader();
+    try {
+        // إرسال طلب الحذف لسكريبت جوجل باستخدام المعرف
+        const url = `${SCRIPT_URL}?action=delete&sheetName=visits&المعرف=${id}`;
+        await fetch(url, { method: 'POST', mode: 'no-cors' });
+        
+        alert('✅ تم حذف السجل بنجاح');
+        loadVisits(); // إعادة تحديث الجدول تلقائياً
+    } catch (err) {
+        alert('❌ حدث خطأ أثناء الحذف');
     }
     if (typeof hideLoader === 'function') hideLoader();
 }
