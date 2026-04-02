@@ -97,7 +97,7 @@ function renderTable(visits) {
             <td>${getField(v, 'المؤسسة')}</td>
             <td>${formatDate(getField(v, 'تاريخ الزيارة'))}</td>
             <td>${getField(v, 'نوع الزيارة')}</td>
-            <td><span class="badge badge-accent">${getField(v, 'النقطة')}</span></td>
+           <td><span class="badge badge-accent">${formatScore(getField(v, 'النقطة'))}</span></td>
             <td>${getField(v, 'العقبات') || '-'}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td class="note-cell">${getField(v, 'الملاحظة') || '-'}</td>
