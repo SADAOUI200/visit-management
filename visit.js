@@ -60,6 +60,14 @@ async function fetchVisits() {
     }
 }
 
+// دالة لضمان عرض النقطة كرقيم صريح ومنع تحولها لتاريخ
+function formatScore(val) {
+    if (val === undefined || val === null || val === '') return '0';
+    // إذا كانت القيمة تاريخاً بسبب خطأ في الشيت، نعيد 0 أو نحاول استخراج الرقم
+    if (val instanceof Date || (typeof val === 'string' && val.includes('GMT'))) return '0';
+    const num = parseFloat(val);
+    return isNaN(num) ? '0' : num;
+}
 // ── عرض الجدول مع نظام الترقيم (Pagination) ───────────────────
 function renderTable(visits) {
     const tbody = document.getElementById('visitsTableBody');
