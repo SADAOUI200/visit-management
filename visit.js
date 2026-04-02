@@ -194,7 +194,7 @@ async function handleVisitSubmit(e) {
         'تاريخ الزيارة': currentDate,
         'نوع الزيارة': form.visitType?.value || 'توجيهية',
         'النقطة': form.score?.value || '0',
-        'العقبات': document.getElementById('penalties').value || 'لا شيء',
+        'العقبات': document.getElementById('penalties') ? document.getElementById('penalties').value : 'لا شيء',
         'الملاحظة': form.notes?.value || '-',
         'الموسم الدراسي': form.season?.value || '2025 / 2026'
     };
