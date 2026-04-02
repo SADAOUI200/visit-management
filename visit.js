@@ -97,8 +97,8 @@ function renderTable(visits) {
             <td>${getField(v, 'المؤسسة')}</td>
             <td>${formatDate(getField(v, 'تاريخ الزيارة'))}</td>
             <td>${getField(v, 'نوع الزيارة')}</td>
-           <td><span class="badge badge-accent">${formatScore(getField(v, 'النقطة'))}</span></td>
-            <td>${getField(v, 'العقبات') || '-'}</td>
+            <td><span class="badge badge-accent">${formatScore(getField(v, 'النقطة'))}</span></td>
+            <td>${getField(v, 'العقبات') || 'لا شيء'}</td>
             <td>${getField(v, 'الموسم الدراسي')}</td>
             <td class="note-cell">${getField(v, 'الملاحظة') || '-'}</td>
         </tr>`).join('');
@@ -194,7 +194,7 @@ async function handleVisitSubmit(e) {
         'تاريخ الزيارة': currentDate,
         'نوع الزيارة': form.visitType?.value || 'توجيهية',
         'النقطة': form.score?.value || '0',
-        'العقبات': form.penalties?.value || 'لا شيء',
+        'العقبات': document.getElementById('penalties').value || 'لا شيء',
         'الملاحظة': form.notes?.value || '-',
         'الموسم الدراسي': form.season?.value || '2025 / 2026'
     };
