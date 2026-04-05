@@ -175,7 +175,7 @@
             const insSel = document.getElementById('inspectorSelect');
             const instSel = document.getElementById('institutionSelect');
 
-            function filterLists() {
+            window.filterLists = function() {
                 const stage = stageSel.value;
                 const mun = munSel.value;
                 insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
