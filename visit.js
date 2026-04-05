@@ -226,24 +226,43 @@ async function handleVisitSubmit(e) {
 }
 // أولاً: دالة التعديل (تعبئة الحقول بالبيانات)
 function editVisit(id) {
+    // العثور على بيانات الزيارة المطلوبة
     const v = allVisits.find(item => getField(item, 'المعرف') === id);
     if (!v) return;
 
-    // تعبئة المعرف في حقل مخفي (تأكد من وجود <input type="hidden" id="editId"> في HTML)
+    // 1. تعبئة المعرف في الحقل المخفي
     document.getElementById('editId').value = id;
-    
-    // تعبئة باقي الحقول
+
+    // 2. تعبئة المرحلة أولاً لأنها تفتح باقي الحقول
+    const stageSel = document.getElementById('stageSelect');
+    stageSel.value = getField(v, 'المرحلة');
+
+    // 3. استدعاء دالة الفلترة (الموجودة في HTML) لتحديث قوائم المفتشين والمؤسسات
+    if (typeof filterLists === 'function') {
+        filterLists(); 
+        
+        // الآن نعبئ المفتش والمؤسسة والبلدية بعد تفعيل الحقول
+        document.getElementById('municipalitySelect').value = getField(v, 'البلدية') || '';
+        document.getElementById('inspectorSelect').value = getField(v, 'اسم المفتش');
+        document.getElementById('institutionSelect').value = getField(v, 'المؤسسة');
+        document.getElementById('specialty').value = getField(v, 'التخصص');
+    }
+
+    // 4. تعبئة باقي الحقول النصية
     document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
     document.getElementById('rank').value = getField(v, 'الرتبة');
     document.getElementById('grade').value = getField(v, 'الدرجة');
+    document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
     document.getElementById('score').value = formatScore(getField(v, 'النقطة'));
     document.getElementById('penalties').value = getField(v, 'العقبات') || 'لا شيء';
-    
-    // تغيير نص زر الحفظ للتنبيه أننا في وضع التعديل
+    document.getElementById('notes').value = getField(v, 'الملاحظة') || 'العمل بالتوجيهات والتوصيات المقدمة';
+    document.getElementById('visitType').value = getField(v, 'نوع الزيارة');
+
+    // 5. تحديث واجهة النموذج
     document.getElementById('formTitle').innerText = '📝 تعديل بيانات الزيارة';
     document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
     
-    // الصعود لأعلى الصفحة لبدء التعديل
+    // التمرير لأعلى الصفحة بسلاسة
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
