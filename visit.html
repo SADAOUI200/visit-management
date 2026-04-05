@@ -11,6 +11,45 @@
         #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
         .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
         .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
+        /* تنسيق حاوية الأزرار داخل الخلية */
+        .action-btns {
+            display: flex;
+            gap: 8px; /* مسافة بين الزرين */
+            justify-content: center;
+        }
+        
+        /* التنسيق العام للأزرار */
+        .btn-edit, .btn-delete {
+            padding: 6px 12px; /* حجم الزر */
+            font-size: 0.85rem; /* حجم الخط */
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* تنسيق زر التعديل (أزرق) */
+        .btn-edit {
+            background-color: #2563eb; /* لون أزرق */
+        }
+        
+        .btn-edit:hover {
+            background-color: #1d4ed8; /* أزرق داكن عند تمرير الفأرة */
+        }
+        
+        /* تنسيق زر الحذف (أحمر) */
+        .btn-delete {
+            background-color: #dc2626; /* لون أحمر */
+        }
+        
+        .btn-delete:hover {
+            background-color: #b91c1c; /* أحمر داكن عند تمرير الفأرة */
+        }
     </style>
 </head>
 <body>
