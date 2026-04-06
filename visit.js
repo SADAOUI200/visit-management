@@ -226,43 +226,43 @@ async function handleVisitSubmit(e) {
 }
 // أولاً: دالة التعديل (تعبئة الحقول بالبيانات)
 function editVisit(id) {
-    // العثور على بيانات الزيارة المطلوبة
+    // 1. البحث عن السجل في المصفوفة
     const v = allVisits.find(item => getField(item, 'المعرف') === id);
-    if (!v) return;
-
-    // 1. تعبئة المعرف في الحقل المخفي
-    document.getElementById('editId').value = id;
-
-    // 2. تعبئة المرحلة أولاً لأنها تفتح باقي الحقول
-    const stageSel = document.getElementById('stageSelect');
-    stageSel.value = getField(v, 'المرحلة');
-
-    // 3. استدعاء دالة الفلترة (الموجودة في HTML) لتحديث قوائم المفتشين والمؤسسات
-    if (typeof filterLists === 'function') {
-        filterLists(); 
-        
-        // الآن نعبئ المفتش والمؤسسة والبلدية بعد تفعيل الحقول
-        document.getElementById('municipalitySelect').value = getField(v, 'البلدية') || '';
-        document.getElementById('inspectorSelect').value = getField(v, 'اسم المفتش');
-        document.getElementById('institutionSelect').value = getField(v, 'المؤسسة');
-        document.getElementById('specialty').value = getField(v, 'التخصص');
+    if (!v) {
+        alert("عذراً، لم يتم العثور على بيانات هذا السجل.");
+        return;
     }
 
-    // 4. تعبئة باقي الحقول النصية
-    document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة');
-    document.getElementById('rank').value = getField(v, 'الرتبة');
-    document.getElementById('grade').value = getField(v, 'الدرجة');
-    document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
-    document.getElementById('score').value = formatScore(getField(v, 'النقطة'));
-    document.getElementById('penalties').value = getField(v, 'العقبات') || 'لا شيء';
-    document.getElementById('notes').value = getField(v, 'الملاحظة') || 'العمل بالتوجيهات والتوصيات المقدمة';
-    document.getElementById('visitType').value = getField(v, 'نوع الزيارة');
-
-    // 5. تحديث واجهة النموذج
-    document.getElementById('formTitle').innerText = '📝 تعديل بيانات الزيارة';
-    document.getElementById('submitBtn').innerText = '💾 حفظ التعديلات';
+    // 2. تعبئة الحقول النصية المباشرة (هذه يجب أن تعمل فوراً)
+    document.getElementById('editId').value = id;
+    document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة') || '';
+    document.getElementById('rank').value = getField(v, 'الرتبة') || '';
+    document.getElementById('grade').value = getField(v, 'الدرجة') || '';
     
-    // التمرير لأعلى الصفحة بسلاسة
+    // 3. تعبئة الحقول الرقمية والتاريخ
+    if (document.getElementById('score')) {
+        document.getElementById('score').value = formatScore(getField(v, 'النقطة'));
+    }
+    if (document.getElementById('vDate')) {
+        document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
+    }
+
+    // 4. تعبئة القوائم المنسدلة (Select)
+    // ملاحظة: تأكد أن القيمة في الشيت تطابق تماماً الخيارات الموجودة في القائمة
+    if (document.getElementById('stageSelect')) {
+        document.getElementById('stageSelect').value = getField(v, 'المرحلة');
+    }
+    if (document.getElementById('penalties')) {
+        document.getElementById('penalties').value = getField(v, 'العقبات') || 'لا شيء';
+    }
+
+    // 5. تغيير مظهر الزر لتنبيهك بالدخول في وضع التعديل
+    const title = document.getElementById('formTitle');
+    const btn = document.getElementById('submitBtn');
+    if (title) title.innerText = '📝 وضع التعديل: ' + getField(v, 'اسم المعني بالزيارة');
+    if (btn) btn.innerText = '💾 حفظ التعديلات الآن';
+
+    // 6. الصعود للأعلى لرؤية البيانات
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
