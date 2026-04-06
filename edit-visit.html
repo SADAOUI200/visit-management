@@ -129,29 +129,41 @@
         }
 
         // 3. عملية الحفظ (التحديث)
-        document.getElementById('editForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            btn.innerText = "جاري الحفظ...";
+        document.getElementById('edit_form').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerText = "جاري الحفظ...";
 
-            const formData = new FormData(e.target);
-            const updateData = Object.fromEntries(formData.entries());
-            updateData.action = "update";
-            updateData.sheetName = "visits";
+    // جمع البيانات يدوياً لضمان الدقة
+    const updateData = {
+        action: "update",
+        sheetName: "visit", // تأكد أن هذا هو اسم الورقة في جوجل شيت
+        id: document.getElementById('editId').value,
+        "اسم المعني بالزيارة": document.getElementById('visitee').value,
+        "المؤسسة": document.getElementById('institution').value,
+        "اسم المفتش": document.getElementById('inspector').value,
+        "تاريخ الزيارة": document.getElementById('vDate').value,
+        "النقطة": document.getElementById('score').value,
+        "العقبات": document.getElementById('penalties').value,
+        "الملاحظة": document.getElementById('notes').value
+    };
 
-            try {
-                const params = new URLSearchParams(updateData).toString();
-                await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
-                
-                alert("✅ تم تحديث البيانات بنجاح في الشيت");
-                window.location.href = 'visit.html'; // العودة للصفحة الرئيسية
-            } catch (error) {
-                alert("حدث خطأ أثناء التحديث.");
-                btn.disabled = false;
-                btn.innerText = "💾 حفظ التعديلات النهائية";
-            }
-        };
+    try {
+        const params = new URLSearchParams(updateData).toString();
+        // إرسال الطلب عبر GET أو POST مع المعطيات في الرابط لتفادي مشاكل CORS
+        await fetch(`${SCRIPT_URL}?${params}`, { 
+            method: 'POST', 
+            mode: 'no-cors' 
+        });
+        
+        alert("✅ تم إرسال التعديلات بنجاح.. سيتم توجيهك الآن");
+        setTimeout(() => { window.location.href = 'visit.html'; }, 1000);
+    } catch (error) {
+        alert("حدث خطأ في الاتصال.");
+        btn.disabled = false;
+    }
+};
     </script>
 </body>
 </html>
