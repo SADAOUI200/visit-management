@@ -231,18 +231,42 @@ function editVisit(id) {
 
 // ثانياً: دالة الحذف (الحذف من الشيت)
 async function deleteVisit(id) {
-    if (!confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) return;
+    // 1. طلب تأكيد الحذف من المستخدم
+    if (!confirm('⚠️ هل أنت متأكد من حذف هذا السجل نهائياً من قاعدة البيانات؟')) return;
     
+    // إظهار علامة التحميل (اللودر)
     if (typeof showLoader === 'function') showLoader();
+
     try {
-        // إرسال طلب الحذف لسكريبت جوجل باستخدام المعرف
-        const url = `${SCRIPT_URL}?action=delete&sheetName=visits&المعرف=${id}`;
-        await fetch(url, { method: 'POST', mode: 'no-cors' });
+        // 2. بناء الرابط ليتوافق مع السكريبت المطور
+        // نرسل الحقول المطلوبة: action, sheetName, والمعرف
+        const params = new URLSearchParams({
+            action: "delete",
+            sheetName: "visits",
+            "المعرف": id
+        });
+
+        const deleteUrl = `${SCRIPT_URL}?${params.toString()}`;
+
+        // 3. إرسال الطلب (نستخدم POST مع no-cors لتجاوز قيود الحماية)
+        await fetch(deleteUrl, { 
+            method: 'POST', 
+            mode: 'no-cors' 
+        });
+
+        // 4. إشعار المستخدم وتحديث الجدول فوراً
+        alert('✅ تم حذف السجل بنجاح من الشيت.');
         
-        alert('✅ تم حذف السجل بنجاح');
-        loadVisits(); // إعادة تحديث الجدول تلقائياً
+        // إعادة تحميل البيانات ليعكس الجدول الحالة الجديدة بعد الحذف
+        if (typeof loadVisits === 'function') {
+            loadVisits(); 
+        }
+
     } catch (err) {
-        alert('❌ حدث خطأ أثناء الحذف');
+        console.error("خطأ في عملية الحذف:", err);
+        alert('❌ تعذر الاتصال بالقاعدة، يرجى المحاولة لاحقاً.');
     }
+
+    // إخفاء علامة التحميل
     if (typeof hideLoader === 'function') hideLoader();
 }
