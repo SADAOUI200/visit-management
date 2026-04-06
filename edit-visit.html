@@ -71,99 +71,81 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
+    // الرابط الذي زودتني به
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 1. استخراج المعرف من الرابط
-            const urlParams = new URLSearchParams(window.location.search);
-            const recordId = urlParams.get('id');
+    document.addEventListener('DOMContentLoaded', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const recordId = urlParams.get('id');
 
-            if (!recordId) {
-                alert("خطأ: لم يتم تحديد سجل للتعديل.");
-                window.location.href = 'visit.html';
-                return;
-            }
-
-            // 2. جلب بيانات هذا السجل تحديداً
-            try {
-                const response = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits`);
-                const allData = await response.json();
-                
-                // البحث عن السجل المطابق للمعرف
-                const record = allData.find(item => item['المعرف'] === recordId || item['id'] === recordId);
-
-                if (record) {
-                    fillForm(record);
-                } else {
-                    alert("عذراً، لم يتم العثور على هذا السجل في قاعدة البيانات.");
-                    window.location.href = 'visit.html';
-                }
-            } catch (error) {
-                console.error("Fetch error:", error);
-                alert("فشل الاتصال بقاعدة البيانات.");
-            }
-        });
-
-        function fillForm(data) {
-            document.getElementById('editId').value = data['المعرف'] || data['id'];
-            document.getElementById('visitee').value = data['اسم المعني بالزيارة'] || '';
-            document.getElementById('institution').value = data['المؤسسة'] || '';
-            document.getElementById('inspector').value = data['اسم المفتش'] || '';
-            document.getElementById('score').value = parseFloat(data['النقطة']) || 0;
-            document.getElementById('penalties').value = data['العقبات'] || 'لا شيء';
-            document.getElementById('notes').value = data['الملاحظة'] || '';
-
-            // تنسيق التاريخ ليقبله الحقل
-            if (data['تاريخ الزيارة']) {
-                const d = new Date(data['تاريخ الزيارة']);
-                if (!isNaN(d)) {
-                    document.getElementById('vDate').value = d.toISOString().split('T')[0];
-                }
-            }
-
-            // إظهار النموذج وإخفاء رسالة التحميل
-            document.getElementById('loadingMessage').style.display = 'none';
-            document.getElementById('editForm').style.display = 'block';
+        if (!recordId) {
+            alert("خطأ: لم يتم تحديد سجل للتعديل.");
+            window.location.href = 'visit.html';
+            return;
         }
 
-        // 3. عملية الحفظ (التحديث)
-        document.getElementById('edit_form').onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('saveBtn');
-    btn.disabled = true;
-    btn.innerText = "جاري الحفظ...";
+        // جلب البيانات لعرضها في الحقول
+        try {
+            const resp = await fetch(`${SCRIPT_URL}?action=get&sheetName=visit`);
+            const data = await resp.json();
+            // البحث عن السجل (تأكد أن اسم العمود في الشيت هو 'المعرف')
+            const record = data.find(item => String(item['المعرف']) === String(recordId));
 
-    // جمع البيانات يدوياً لضمان الدقة
-    const updateData = {
-        action: "update",
-        sheetName: "visit", // تأكد أن هذا هو اسم الورقة في جوجل شيت
-        id: document.getElementById('editId').value,
-        "اسم المعني بالزيارة": document.getElementById('visitee').value,
-        "المؤسسة": document.getElementById('institution').value,
-        "اسم المفتش": document.getElementById('inspector').value,
-        "تاريخ الزيارة": document.getElementById('vDate').value,
-        "النقطة": document.getElementById('score').value,
-        "العقبات": document.getElementById('penalties').value,
-        "الملاحظة": document.getElementById('notes').value
-    };
+            if (record) {
+                document.getElementById('editId').value = record['المعرف'];
+                document.getElementById('visitee').value = record['اسم المعني بالزيارة'] || '';
+                document.getElementById('institution').value = record['المؤسسة'] || '';
+                document.getElementById('inspector').value = record['اسم المفتش'] || '';
+                document.getElementById('score').value = record['النقطة'] || 0;
+                document.getElementById('penalties').value = record['العقبات'] || 'لا شيء';
+                document.getElementById('notes').value = record['الملاحظة'] || '';
+                
+                if (record['تاريخ الزيارة']) {
+                    const d = new Date(record['تاريخ الزيارة']);
+                    document.getElementById('vDate').value = d.toISOString().split('T')[0];
+                }
+                
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('editForm').style.display = 'block';
+            }
+        } catch (e) { alert("خطأ في جلب البيانات"); }
+    });
 
-    try {
-        const params = new URLSearchParams(updateData).toString();
-        // إرسال الطلب عبر GET أو POST مع المعطيات في الرابط لتفادي مشاكل CORS
-        await fetch(`${SCRIPT_URL}?${params}`, { 
-            method: 'POST', 
-            mode: 'no-cors' 
+    // --- الجزء الأهم: إرسال التعديل للشيت ---
+    document.getElementById('editForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerText = "⏳ جاري التحديث في الشيت...";
+
+        // تجهيز الرابط مع كل المعطيات (Query Parameters)
+        // ملاحظة: نستخدم GET هنا لأن أغلب سكريبتات جوجل البسيطة تستقبل التحديث عبرها لتجنب مشاكل CORS
+        const params = new URLSearchParams({
+            action: "update",
+            sheetName: "visit",
+            "المعرف": document.getElementById('editId').value,
+            "اسم المعني بالزيارة": document.getElementById('visitee').value,
+            "المؤسسة": document.getElementById('institution').value,
+            "اسم المفتش": document.getElementById('inspector').value,
+            "تاريخ الزيارة": document.getElementById('vDate').value,
+            "النقطة": document.getElementById('score').value,
+            "العقبات": document.getElementById('penalties').value,
+            "الملاحظة": document.getElementById('notes').value
         });
-        
-        alert("✅ تم إرسال التعديلات بنجاح.. سيتم توجيهك الآن");
-        setTimeout(() => { window.location.href = 'visit.html'; }, 1000);
-    } catch (error) {
-        alert("حدث خطأ في الاتصال.");
-        btn.disabled = false;
-    }
-};
-    </script>
+
+        try {
+            // إرسال الطلب
+            await fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'POST', mode: 'no-cors' });
+            
+            alert("✅ تم تحديث البيانات بنجاح في الشيت الرئيسي");
+            window.location.href = 'visit.html'; 
+        } catch (error) {
+            alert("❌ حدث خطأ أثناء الاتصال بالخادم");
+            btn.disabled = false;
+            btn.innerText = "💾 حفظ التعديلات النهائية";
+        }
+    };
+</script>
 </body>
 </html>
