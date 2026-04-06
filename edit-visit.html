@@ -123,7 +123,7 @@
         // ملاحظة: نستخدم GET هنا لأن أغلب سكريبتات جوجل البسيطة تستقبل التحديث عبرها لتجنب مشاكل CORS
         const params = new URLSearchParams({
             action: "update",
-            sheetName: "visit",
+            sheetName: "visits", // تأكد أنها visits وليس visit
             "المعرف": document.getElementById('editId').value,
             "اسم المعني بالزيارة": document.getElementById('visitee').value,
             "المؤسسة": document.getElementById('institution').value,
