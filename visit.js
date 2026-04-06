@@ -224,46 +224,9 @@ async function handleVisitSubmit(e) {
     }
     if (typeof hideLoader === 'function') hideLoader();
 }
-// أولاً: دالة التعديل (تعبئة الحقول بالبيانات)
 function editVisit(id) {
-    // 1. البحث عن السجل في المصفوفة
-    const v = allVisits.find(item => getField(item, 'المعرف') === id);
-    if (!v) {
-        alert("عذراً، لم يتم العثور على بيانات هذا السجل.");
-        return;
-    }
-
-    // 2. تعبئة الحقول النصية المباشرة (هذه يجب أن تعمل فوراً)
-    document.getElementById('editId').value = id;
-    document.getElementById('visitee').value = getField(v, 'اسم المعني بالزيارة') || '';
-    document.getElementById('rank').value = getField(v, 'الرتبة') || '';
-    document.getElementById('grade').value = getField(v, 'الدرجة') || '';
-    
-    // 3. تعبئة الحقول الرقمية والتاريخ
-    if (document.getElementById('score')) {
-        document.getElementById('score').value = formatScore(getField(v, 'النقطة'));
-    }
-    if (document.getElementById('vDate')) {
-        document.getElementById('vDate').value = formatDate(getField(v, 'تاريخ الزيارة'));
-    }
-
-    // 4. تعبئة القوائم المنسدلة (Select)
-    // ملاحظة: تأكد أن القيمة في الشيت تطابق تماماً الخيارات الموجودة في القائمة
-    if (document.getElementById('stageSelect')) {
-        document.getElementById('stageSelect').value = getField(v, 'المرحلة');
-    }
-    if (document.getElementById('penalties')) {
-        document.getElementById('penalties').value = getField(v, 'العقبات') || 'لا شيء';
-    }
-
-    // 5. تغيير مظهر الزر لتنبيهك بالدخول في وضع التعديل
-    const title = document.getElementById('formTitle');
-    const btn = document.getElementById('submitBtn');
-    if (title) title.innerText = '📝 وضع التعديل: ' + getField(v, 'اسم المعني بالزيارة');
-    if (btn) btn.innerText = '💾 حفظ التعديلات الآن';
-
-    // 6. الصعود للأعلى لرؤية البيانات
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // الانتقال لصفحة التعديل مع إرسال المعرف في الرابط
+    window.location.href = `edit-visit.html?id=${id}`;
 }
 
 // ثانياً: دالة الحذف (الحذف من الشيت)
