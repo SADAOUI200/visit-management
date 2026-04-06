@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تعديل بيانات الزيارة</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .container { max-width: 800px; margin: 30px auto; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .loading-msg { text-align: center; padding: 20px; color: #2563eb; font-weight: bold; }
+        #editForm { display: none; } /* يظهر بعد تحميل البيانات */
+    </style>
+</head>
+<body>
+    <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
+
+    <div class="container">
+        <div class="header-actions">
+            <h2>✏️ تعديل بيانات الزيارة</h2>
+            <a href="visit.html" class="btn btn-secondary">🔙 العودة للسجل</a>
+        </div>
+
+        <div id="loadingMessage" class="loading-msg">⏳ جاري جلب بيانات السجل...</div>
+
+        <div class="card fade-in" id="editCard">
+            <form id="editForm">
+                <input type="hidden" id="editId" name="المعرف">
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>اسم المعني بالزيارة</label>
+                        <input type="text" id="visitee" name="اسم المعني بالزيارة" required />
+                    </div>
+                    <div class="form-group">
+                        <label>المؤسسة</label>
+                        <input type="text" id="institution" name="المؤسسة" required />
+                    </div>
+                    <div class="form-group">
+                        <label>المفتش</label>
+                        <input type="text" id="inspector" name="اسم المفتش" required />
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ الزيارة</label>
+                        <input type="date" id="vDate" name="تاريخ الزيارة" required />
+                    </div>
+                    <div class="form-group">
+                        <label>النقطة</label>
+                        <input type="number" id="score" name="النقطة" step="0.25" required />
+                    </div>
+                    <div class="form-group">
+                        <label>العقبات / الإجازات</label>
+                        <select name="العقبات" id="penalties">
+                            <option value="لا شيء">لا شيء</option>
+                            <option value="إقتراح إنذار">إقتراح إنذار</option>
+                            <option value="إقتراح توبيخ">إقتراح توبيخ</option>
+                            <option value="إقتراح تشجيع">إقتراح تشجيع</option>
+                            <option value="إقتراح ترسيم">إقتراح ترسيم</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>الملاحظة</label>
+                        <textarea id="notes" name="الملاحظة" rows="3" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-accent" id="saveBtn">💾 حفظ التعديلات النهائية</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNxA-jsBPMeguI5kaP8L8h5xldssUvhrSTgkTLV0xQGxQ3e-OOWR8ZRBqXr8OLJUes/exec";
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. استخراج المعرف من الرابط
+            const urlParams = new URLSearchParams(window.location.search);
+            const recordId = urlParams.get('id');
+
+            if (!recordId) {
+                alert("خطأ: لم يتم تحديد سجل للتعديل.");
+                window.location.href = 'visit.html';
+                return;
+            }
+
+            // 2. جلب بيانات هذا السجل تحديداً
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=get&sheetName=visits`);
+                const allData = await response.json();
+                
+                // البحث عن السجل المطابق للمعرف
+                const record = allData.find(item => item['المعرف'] === recordId || item['id'] === recordId);
+
+                if (record) {
+                    fillForm(record);
+                } else {
+                    alert("عذراً، لم يتم العثور على هذا السجل في قاعدة البيانات.");
+                    window.location.href = 'visit.html';
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                alert("فشل الاتصال بقاعدة البيانات.");
+            }
+        });
+
+        function fillForm(data) {
+            document.getElementById('editId').value = data['المعرف'] || data['id'];
+            document.getElementById('visitee').value = data['اسم المعني بالزيارة'] || '';
+            document.getElementById('institution').value = data['المؤسسة'] || '';
+            document.getElementById('inspector').value = data['اسم المفتش'] || '';
+            document.getElementById('score').value = parseFloat(data['النقطة']) || 0;
+            document.getElementById('penalties').value = data['العقبات'] || 'لا شيء';
+            document.getElementById('notes').value = data['الملاحظة'] || '';
+
+            // تنسيق التاريخ ليقبله الحقل
+            if (data['تاريخ الزيارة']) {
+                const d = new Date(data['تاريخ الزيارة']);
+                if (!isNaN(d)) {
+                    document.getElementById('vDate').value = d.toISOString().split('T')[0];
+                }
+            }
+
+            // إظهار النموذج وإخفاء رسالة التحميل
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('editForm').style.display = 'block';
+        }
+
+        // 3. عملية الحفظ (التحديث)
+        document.getElementById('editForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "جاري الحفظ...";
+
+            const formData = new FormData(e.target);
+            const updateData = Object.fromEntries(formData.entries());
+            updateData.action = "update";
+            updateData.sheetName = "visits";
+
+            try {
+                const params = new URLSearchParams(updateData).toString();
+                await fetch(`${SCRIPT_URL}?${params}`, { method: 'POST', mode: 'no-cors' });
+                
+                alert("✅ تم تحديث البيانات بنجاح في الشيت");
+                window.location.href = 'visit.html'; // العودة للصفحة الرئيسية
+            } catch (error) {
+                alert("حدث خطأ أثناء التحديث.");
+                btn.disabled = false;
+                btn.innerText = "💾 حفظ التعديلات النهائية";
+            }
+        };
+    </script>
+</body>
+</html>
