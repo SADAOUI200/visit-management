@@ -120,73 +120,52 @@
 
         // دالة تصفية المفتشين بناءً على الرتبة المختارة
         async function filterInspectorsByRank() {
-            const rank = document.getElementById('rankSelect').value;
-            const inspectorSelect = document.getElementById('inspectorSelect');
-            
-            if (!rank) {
-                inspectorSelect.innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
-                return;
-            }
+    const selectedRank = document.getElementById('rankSelect').value;
+    const inspectorSelect = document.getElementById('inspectorSelect');
+    
+    if (!selectedRank) {
+        inspectorSelect.innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
+        return;
+    }
 
-            inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
+    // تحديد "المرحلة" المقابلة لكل رتبة بناءً على معطياتك
+    let targetStage = "";
+    if (selectedRank === "مفتش التعليم الابتدائي") targetStage = "ابتدائي";
+    else if (selectedRank === "مفتش التعليم المتوسط") targetStage = "متوسط";
+    else if (selectedRank === "مفتش التعليم الثانوي") targetStage = "ثانوي";
 
-            try {
-                // جلب المفتشين من ملف data.js
-                const allInspectors = await fetchInspectors(true); 
-                
-                // تصفية المفتشين حسب الرتبة
-                const filtered = allInspectors.filter(insp => (insp['الرتبة'] || insp['rank']) === rank);
+    inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
 
-                if (filtered.length > 0) {
-                    inspectorSelect.innerHTML = '<option value="">-- اختر المفتش من القائمة --</option>';
-                    filtered.forEach(insp => {
-                        const name = insp['الاسم واللقب'] || insp['name'];
-                        const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = name;
-                        inspectorSelect.appendChild(option);
-                    });
-                } else {
-                    inspectorSelect.innerHTML = '<option value="">⚠️ لا يوجد مفتشون مسجلون لهذه الرتبة</option>';
-                }
-            } catch (error) {
-                console.error("Error fetching inspectors:", error);
-                inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
-            }
+    try {
+        // جلب البيانات من data.js
+        const allInspectors = await fetchInspectors(true); 
+        
+        // التصفية بناءً على عمود "المرحلة" (أو "stage")
+        const filtered = allInspectors.filter(insp => {
+            // نجلب القيمة من عمود "المرحلة" وننظفها من المسافات
+            const dbStage = (insp['المرحلة'] || insp['stage'] || '').toString().trim();
+            return dbStage === targetStage;
+        });
+
+        if (filtered.length > 0) {
+            inspectorSelect.innerHTML = '<option value="">-- اختر المفتش (${filtered.length}) --</option>';
+            filtered.forEach(insp => {
+                const name = insp['الاسم واللقب'] || insp['name'];
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                inspectorSelect.appendChild(option);
+            });
+        } else {
+            inspectorSelect.innerHTML = `<option value="">⚠️ لا يوجد مفتشون في مرحلة ${targetStage}</option>`;
+            // للتصحيح: طباعة البيانات في القنصل للتأكد من مسميات الأعمدة
+            console.log("البيانات المستلمة أول سطر:", allInspectors[0]);
         }
-
-        // معالجة إرسال النموذج
-        document.getElementById('missionForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerText = "⏳ جاري الحفظ...";
-
-            const formData = new FormData(e.target);
-            const params = new URLSearchParams();
-            params.append("action", "insertMission");
-            
-            for (const pair of formData.entries()) {
-                params.append(pair[0], pair[1]);
-            }
-
-            try {
-                // إرسال البيانات لجوجل شيت
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: params
-                });
-                alert("✅ تم تسجيل الأمر بمهمة بنجاح في الشيت");
-                e.target.reset();
-                document.getElementById('inspectorSelect').innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
-            } catch (err) {
-                alert("❌ حدث خطأ أثناء الإرسال، يرجى التحقق من الاتصال");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "💾 حفظ في الشيت";
-            }
-        };
-    </script>
+    } catch (error) {
+        console.error("Error fetching inspectors:", error);
+        inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
+    }
+}
+</script>
 </body>
 </html>
