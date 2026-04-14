@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إصدار أمر بمهمة</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container { max-width: 900px; margin: 30px auto; }
+        .mission-card { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .full-width { grid-column: span 2; }
+        label { color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: 500; }
+        input, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; transition: border 0.3s; }
+        input:focus { border-color: #f59e0b; outline: none; }
+        @media print { .btn, .page-header { display: none; } .mission-card { border: none; background: white; color: black; } input { border: none; color: black; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 class="page-title">📜 تحرير أمر بمهمة</h1>
+            <a href="dashboard.html" class="btn btn-secondary">🔙 العودة للوحة التحكم</a>
+        </header>
+
+        <div class="mission-card fade-in">
+            <form id="missionForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>الرقم التسلسلي</label>
+                        <input type="text" name="الرقم" required placeholder="مثال: 2026/001">
+                    </div>
+                    <div class="form-group">
+                        <label>الاسم واللقب</label>
+                        <input type="text" name="الاسم واللقب" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الرتبة</label>
+                        <input type="text" name="الرتبة" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الإقامة الإدارية</label>
+                        <input type="text" name="الإقامة الإدارية" required>
+                    </div>
+                    <div class="form-group">
+                        <label>مكان الملتقى</label>
+                        <input type="text" name="مكان الملتقى" required>
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ الذهاب</label>
+                        <input type="date" name="تاريخ الذهاب" required>
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ العودة</label>
+                        <input type="date" name="تاريخ العودة" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>موضوع الملتقى</label>
+                        <input type="text" name="موضوع الملتقى" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>الملاحظة</label>
+                        <textarea name="الملاحظة" rows="3" placeholder="أدخل أي ملاحظات إضافية هنا..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 30px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-accent" id="submitBtn" style="background-color: #f59e0b;">💾 حفظ في الشيت</button>
+                    <button type="button" class="btn btn-ghost" onclick="window.print()">🖨️ طباعة معاينة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // رابط النشر الجديد الخاص بك
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYcwiQUJYKmMTKWFFpExIV_gDuRC2c-vSd6R7Ow-rsU24SGud6_6_qRl0YAV3BFwId/exec";
+
+        document.getElementById('missionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "⏳ جاري الحفظ...";
+
+            const formData = new FormData(e.target);
+            const params = new URLSearchParams();
+            params.append("action", "insertMission");
+            
+            for (const pair of formData.entries()) {
+                params.append(pair[0], pair[1]);
+            }
+
+            try {
+                // إرسال البيانات باستخدام POST و mode: no-cors لتجنب مشاكل CORS
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: params
+                });
+                alert("✅ تم تسجيل الأمر بمهمة بنجاح في جدول البيانات");
+                e.target.reset();
+            } catch (err) {
+                alert("❌ حدث خطأ أثناء الإرسال، تحقق من الاتصال");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "💾 حفظ في الشيت";
+            }
+        };
+    </script>
+</body>
+</html>
