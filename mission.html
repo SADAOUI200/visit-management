@@ -3,38 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إصدار أمر بمهمة</title>
+    <title>تحرير أمر بمهمة - مديرية التربية لولاية توقرت</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        @font-face {
+            font-family: 'Sakkal Majalla';
+            src: local('Sakkal Majalla');
+        }
+
+        body { font-family: 'Sakkal Majalla', Arial, sans-serif; }
+
         .container { max-width: 900px; margin: 30px auto; }
-        .mission-card { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        /* تنسيق النموذج في المتصفح */
+        .mission-card { 
+            background: #1e293b; padding: 30px; border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+        }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .full-width { grid-column: span 2; }
-        label { color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: 500; }
-        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; transition: border 0.3s; }
-        input:focus, select:focus { border-color: #f59e0b; outline: none; }
-        @media print { .btn, .page-header, .form-actions { display: none !important; } body { background: white !important; color: black !important; } .mission-card { border: none; background: white; color: black; box-shadow: none; } label { color: #333; } input, select, textarea { border: 1px solid #ccc; color: black; background: white; } }
+        label { color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: bold; }
+        input, select, textarea { 
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; 
+            background: #0f172a; color: white; font-family: 'Sakkal Majalla'; font-size: 1.2rem;
+        }
+
+        /* تنسيق الطباعة الرسمي (بناءً على الصورة المرفقة) */
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: white !important; color: black !important; margin: 0; padding: 20px; }
+            .container, .mission-card { max-width: 100%; margin: 0; padding: 0; background: white !important; border: none !important; }
+            .btn, .page-header, .form-actions, .loader-overlay { display: none !important; }
+            
+            /* تصميم الوثيقة الرسمية */
+            .print-header { text-align: center; margin-bottom: 40px; line-height: 1.6; }
+            .print-header h2 { font-size: 24pt; margin: 5px 0; }
+            .print-header h3 { font-size: 18pt; margin: 5px 0; }
+            
+            .doc-title { 
+                text-align: center; margin: 40px auto; width: fit-content;
+                border: 2px solid black; padding: 10px 40px; border-radius: 15px;
+                font-size: 32pt; font-weight: bold; 
+            }
+
+            .doc-body { margin-top: 50px; font-size: 18pt; line-height: 2.5; padding: 0 50px; }
+            .data-row { display: flex; border-bottom: 1px dotted #000; margin-bottom: 15px; }
+            .label-text { min-width: 180px; font-weight: bold; }
+            .value-text { flex-grow: 1; padding-right: 10px; }
+            
+            .footer-note { margin-top: 40px; text-align: center; font-size: 14pt; font-style: italic; padding: 0 40px; }
+            .signature-area { margin-top: 60px; text-align: left; padding-left: 80px; font-size: 16pt; }
+
+            /* إخفاء الفورم عند الطباعة وإظهار الهيكل الورقي */
+            #missionForm { display: none; }
+            #officialPrintDoc { display: block !important; }
+        }
+
+        #officialPrintDoc { display: none; }
     </style>
 </head>
 <body>
-    <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
-
     <div class="container">
         <header class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 class="page-title">📜 تحرير أمر بمهمة</h1>
-            <a href="dashboard.html" class="btn btn-secondary">🔙 العودة للوحة التحكم</a>
+            <a href="dashboard.html" class="btn btn-secondary">🔙 العودة</a>
         </header>
 
         <div class="mission-card fade-in">
             <form id="missionForm">
                 <div class="form-grid">
+                    <div class="form-group"><label>الرقم</label><input type="text" id="m_num" name="الرقم" required></div>
                     <div class="form-group">
-                        <label>الرقم التسلسلي</label>
-                        <input type="text" name="الرقم" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>الرتبة (المرحلة التعليمية)</label>
+                        <label>الرتبة (الوظيفة)</label>
                         <select id="rankSelect" name="الرتبة" required onchange="filterInspectorsByStage()">
                             <option value="">-- اختر المرحلة --</option>
                             <option value="ابتدائي">مفتش التعليم الابتدائي</option>
@@ -42,116 +82,108 @@
                             <option value="ثانوي">مفتش التعليم الثانوي</option>
                         </select>
                     </div>
-
                     <div class="form-group">
-                        <label>الاسم واللقب (من عمود الاسم)</label>
+                        <label>الاسم واللقب</label>
                         <select id="inspectorSelect" name="الاسم واللقب" required>
                             <option value="">-- اختر المرحلة أولاً --</option>
                         </select>
                     </div>
-
-                    <div class="form-group">
-                        <label>الإقامة الإدارية</label>
-                        <input type="text" name="الإقامة الإدارية" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>مكان الملتقى</label>
-                        <input type="text" name="مكان الملتقى" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>تاريخ الذهاب</label>
-                        <input type="date" name="تاريخ الذهاب" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>تاريخ العودة</label>
-                        <input type="date" name="تاريخ العودة" required>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label>موضوع الملتقى</label>
-                        <input type="text" name="موضوع الملتقى" required>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label>الملاحظة</label>
-                        <textarea name="الملاحظة" rows="3"></textarea>
-                    </div>
+                    <div class="form-group"><label>الإقامة الإدارية</label><input type="text" id="m_res" name="الإقامة الإدارية" required></div>
+                    <div class="form-group"><label>مكان الملتقى (يسافر إلى)</label><input type="text" id="m_loc" name="مكان الملتقى" required></div>
+                    <div class="form-group"><label>موضوع الملتقى (سبب السفر)</label><input type="text" id="m_subj" name="موضوع الملتقى" required></div>
+                    <div class="form-group"><label>تاريخ الذهاب</label><input type="date" id="m_start" name="تاريخ الذهاب" required></div>
+                    <div class="form-group"><label>تاريخ العودة</label><input type="date" id="m_end" name="تاريخ العودة" required></div>
+                    <div class="form-group full-width"><label>الملاحظة</label><textarea id="m_note" name="الملاحظة" rows="2"></textarea></div>
                 </div>
-
                 <div class="form-actions" style="margin-top: 30px; display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-accent" id="submitBtn" style="background-color: #f59e0b;">💾 حفظ في الشيت</button>
-                    <button type="button" class="btn btn-ghost" onclick="window.print()">🖨️ طباعة المعاينة</button>
+                    <button type="submit" class="btn btn-accent" id="submitBtn">💾 حفظ في الشيت</button>
+                    <button type="button" class="btn btn-ghost" onclick="prepareAndPrint()" style="border-color: #f59e0b; color: #f59e0b;">🖨️ طبع الوثيقة</button>
                 </div>
             </form>
+        </div>
+
+        <div id="officialPrintDoc">
+            <div class="print-header">
+                <h3>الجمهورية الجزائرية الديمقراطية الشعبية </h3>
+                <h3>وزارة التربية الوطنية </h3>
+                <h3>مديرية التربية لولاية توقرت </h3>
+                <div style="text-align: right; margin-top: 20px;">الرقم: <span id="p_num"></span></div>
+            </div>
+
+            <div class="doc-title">أمر بمهمة </div>
+
+            <div class="doc-body">
+                <div class="data-row"><span class="label-text">الاسم واللقب :</span> <span class="value-text" id="p_name"></span></div>
+                <div class="data-row"><span class="label-text">الوظيفة :</span> <span class="value-text" id="p_rank"></span></div>
+                <div class="data-row"><span class="label-text">الإقامة الإدارية :</span> <span class="value-text" id="p_res"></span></div>
+                <div class="data-row"><span class="label-text">يسافر إلى :</span> <span class="value-text" id="p_loc"></span></div>
+                <div class="data-row"><span class="label-text">سبب السفر :</span> <span class="value-text" id="p_subj"></span></div>
+                <div class="data-row"><span class="label-text">وسائل النقل :</span> <span class="value-text">أي وسيلة </span></div>
+                <div class="data-row"><span class="label-text">تاريخ الذهاب :</span> <span class="value-text" id="p_start"></span></div>
+                <div class="data-row"><span class="label-text">تاريخ العودة :</span> <span class="value-text" id="p_end"></span></div>
+                <div style="margin-top: 10px;">
+                    <strong>الملاحظة:</strong><br>
+                    <div style="padding-right: 20px; line-height: 1.5;" id="p_note"></div>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                على السلطات المدنية والعسكرية أن تسمح بالتنقل بكل حرية وفي جميع الظروف لحامل هذا الأمر، وأن تعينه على أداء مهمته وأن تقدم له كل المساعدة وشكرا. 
+            </div>
+
+            <div class="signature-area">
+                حرر بتوقرت في: ......................... 
+            </div>
         </div>
     </div>
 
     <script src="data.js"></script>
     <script src="app.js"></script>
-
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYcwiQUJYKmMTKWFFpExIV_gDuRC2c-vSd6R7Ow-rsU24SGud6_6_qRl0YAV3BFwId/exec";
+
+        // نقل البيانات من الفورم إلى هيكل الطباعة ثم تنفيذ الطباعة
+        function prepareAndPrint() {
+            document.getElementById('p_num').innerText = document.getElementById('m_num').value;
+            document.getElementById('p_name').innerText = document.getElementById('inspectorSelect').value;
+            document.getElementById('p_rank').innerText = document.getElementById('rankSelect').options[document.getElementById('rankSelect').selectedIndex].text;
+            document.getElementById('p_res').innerText = document.getElementById('m_res').value;
+            document.getElementById('p_loc').innerText = document.getElementById('m_loc').value;
+            document.getElementById('p_subj').innerText = document.getElementById('m_subj').value;
+            document.getElementById('p_start').innerText = document.getElementById('m_start').value;
+            document.getElementById('p_end').innerText = document.getElementById('m_end').value;
+            document.getElementById('p_note').innerText = document.getElementById('m_note').value;
+            
+            window.print();
+        }
 
         async function filterInspectorsByStage() {
             const stage = document.getElementById('rankSelect').value;
             const inspectorSelect = document.getElementById('inspectorSelect');
-            
-            if (!stage) {
-                inspectorSelect.innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
-                return;
-            }
-
-            inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
-
+            if (!stage) return;
+            inspectorSelect.innerHTML = '<option value="">⏳ جاري الجلب...</option>';
             try {
-                // جلب المفتشين من data.js (الذي يجلبها من شيت المفتشين)
                 const allInspectors = await fetchInspectors(true); 
-                
-                // التصفية بناءً على عمود "المرحلة" والمطابقة مع القيمة المختارة
-                const filtered = allInspectors.filter(insp => {
-                    const dbStage = (insp['المرحلة'] || "").toString().trim();
-                    return dbStage === stage;
+                const filtered = allInspectors.filter(insp => (insp['المرحلة'] || "").trim() === stage);
+                inspectorSelect.innerHTML = '<option value="">-- اختر المفتش --</option>';
+                filtered.forEach(insp => {
+                    const name = insp['الاسم'] || insp['الاسم واللقب'];
+                    let opt = new Option(name, name);
+                    inspectorSelect.add(opt);
                 });
-
-                if (filtered.length > 0) {
-                    inspectorSelect.innerHTML = '<option value="">-- اختر المفتش من القائمة --</option>';
-                    filtered.forEach(insp => {
-                        // إحضار الاسم من عمود "الاسم" كما طلبت
-                        const name = insp['الاسم'] || insp['الاسم واللقب'] || "اسم غير معروف";
-                        const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = name;
-                        inspectorSelect.appendChild(option);
-                    });
-                } else {
-                    inspectorSelect.innerHTML = `<option value="">⚠️ لا يوجد مفتشون في مرحلة (${stage})</option>`;
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
-            }
+            } catch (e) { console.error(e); }
         }
 
         document.getElementById('missionForm').onsubmit = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerText = "⏳ جاري الحفظ...";
-
-            const formData = new FormData(e.target);
-            const params = new URLSearchParams();
+            btn.disabled = true; btn.innerText = "⏳ جاري الحفظ...";
+            const params = new URLSearchParams(new FormData(e.target));
             params.append("action", "insertMission");
-            for (const pair of formData.entries()) { params.append(pair[0], pair[1]); }
-
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: params });
-                alert("✅ تم تسجيل الأمر بمهمة بنجاح");
-                e.target.reset();
-                document.getElementById('inspectorSelect').innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
-            } catch (err) { alert("❌ حدث خطأ أثناء الإرسال"); } 
+                alert("✅ تم الحفظ في الشيت بنجاح");
+            } catch (err) { alert("❌ خطأ في الإرسال"); } 
             finally { btn.disabled = false; btn.innerText = "💾 حفظ في الشيت"; }
         };
     </script>
