@@ -7,16 +7,40 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .container { max-width: 900px; margin: 30px auto; }
-        .mission-card { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .mission-card { 
+            background: #1e293b; 
+            padding: 30px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+        }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .full-width { grid-column: span 2; }
         label { color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: 500; }
-        input, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; transition: border 0.3s; }
-        input:focus { border-color: #f59e0b; outline: none; }
-        @media print { .btn, .page-header { display: none; } .mission-card { border: none; background: white; color: black; } input { border: none; color: black; } }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid #334155; 
+            background: #0f172a; 
+            color: white; 
+            transition: border 0.3s; 
+        }
+        input:focus, select:focus { border-color: #f59e0b; outline: none; }
+        
+        /* تنسيق خاص للطباعة */
+        @media print { 
+            .btn, .page-header, .form-actions { display: none !important; } 
+            body { background: white !important; color: black !important; }
+            .mission-card { border: none; background: white; color: black; box-shadow: none; } 
+            label { color: #333; }
+            input, select, textarea { border: 1px solid #ccc; color: black; background: white; } 
+        }
     </style>
 </head>
 <body>
+    <div class="loader-overlay" id="loaderOverlay"><div class="spinner"></div></div>
+
     <div class="container">
         <header class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 class="page-title">📜 تحرير أمر بمهمة</h1>
@@ -30,34 +54,49 @@
                         <label>الرقم التسلسلي</label>
                         <input type="text" name="الرقم" required placeholder="مثال: 2026/001">
                     </div>
-                    <div class="form-group">
-                        <label>الاسم واللقب</label>
-                        <input type="text" name="الاسم واللقب" required>
-                    </div>
+
                     <div class="form-group">
                         <label>الرتبة</label>
-                        <input type="text" name="الرتبة" required>
+                        <select id="rankSelect" name="الرتبة" required onchange="filterInspectorsByRank()">
+                            <option value="">-- اختر الرتبة --</option>
+                            <option value="مفتش التعليم الابتدائي">مفتش التعليم الابتدائي</option>
+                            <option value="مفتش التعليم المتوسط">مفتش التعليم المتوسط</option>
+                            <option value="مفتش التعليم الثانوي">مفتش التعليم الثانوي</option>
+                        </select>
                     </div>
+
+                    <div class="form-group">
+                        <label>الاسم واللقب (المفتش المعني)</label>
+                        <select id="inspectorSelect" name="الاسم واللقب" required>
+                            <option value="">-- اختر الرتبة أولاً --</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label>الإقامة الإدارية</label>
                         <input type="text" name="الإقامة الإدارية" required>
                     </div>
+
                     <div class="form-group">
                         <label>مكان الملتقى</label>
                         <input type="text" name="مكان الملتقى" required>
                     </div>
+
                     <div class="form-group">
                         <label>تاريخ الذهاب</label>
                         <input type="date" name="تاريخ الذهاب" required>
                     </div>
+
                     <div class="form-group">
                         <label>تاريخ العودة</label>
                         <input type="date" name="تاريخ العودة" required>
                     </div>
+
                     <div class="form-group full-width">
                         <label>موضوع الملتقى</label>
                         <input type="text" name="موضوع الملتقى" required>
                     </div>
+
                     <div class="form-group full-width">
                         <label>الملاحظة</label>
                         <textarea name="الملاحظة" rows="3" placeholder="أدخل أي ملاحظات إضافية هنا..."></textarea>
@@ -66,16 +105,57 @@
 
                 <div class="form-actions" style="margin-top: 30px; display: flex; gap: 10px;">
                     <button type="submit" class="btn btn-accent" id="submitBtn" style="background-color: #f59e0b;">💾 حفظ في الشيت</button>
-                    <button type="button" class="btn btn-ghost" onclick="window.print()">🖨️ طباعة معاينة</button>
+                    <button type="button" class="btn btn-ghost" onclick="window.print()">🖨️ طباعة المعاينة</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+
     <script>
-        // رابط النشر الجديد الخاص بك
+        // رابط النشر الخاص بك
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYcwiQUJYKmMTKWFFpExIV_gDuRC2c-vSd6R7Ow-rsU24SGud6_6_qRl0YAV3BFwId/exec";
 
+        // دالة تصفية المفتشين بناءً على الرتبة المختارة
+        async function filterInspectorsByRank() {
+            const rank = document.getElementById('rankSelect').value;
+            const inspectorSelect = document.getElementById('inspectorSelect');
+            
+            if (!rank) {
+                inspectorSelect.innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
+                return;
+            }
+
+            inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
+
+            try {
+                // جلب المفتشين من ملف data.js
+                const allInspectors = await fetchInspectors(true); 
+                
+                // تصفية المفتشين حسب الرتبة
+                const filtered = allInspectors.filter(insp => (insp['الرتبة'] || insp['rank']) === rank);
+
+                if (filtered.length > 0) {
+                    inspectorSelect.innerHTML = '<option value="">-- اختر المفتش من القائمة --</option>';
+                    filtered.forEach(insp => {
+                        const name = insp['الاسم واللقب'] || insp['name'];
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        inspectorSelect.appendChild(option);
+                    });
+                } else {
+                    inspectorSelect.innerHTML = '<option value="">⚠️ لا يوجد مفتشون مسجلون لهذه الرتبة</option>';
+                }
+            } catch (error) {
+                console.error("Error fetching inspectors:", error);
+                inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
+            }
+        }
+
+        // معالجة إرسال النموذج
         document.getElementById('missionForm').onsubmit = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -91,16 +171,17 @@
             }
 
             try {
-                // إرسال البيانات باستخدام POST و mode: no-cors لتجنب مشاكل CORS
+                // إرسال البيانات لجوجل شيت
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     body: params
                 });
-                alert("✅ تم تسجيل الأمر بمهمة بنجاح في جدول البيانات");
+                alert("✅ تم تسجيل الأمر بمهمة بنجاح في الشيت");
                 e.target.reset();
+                document.getElementById('inspectorSelect').innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
             } catch (err) {
-                alert("❌ حدث خطأ أثناء الإرسال، تحقق من الاتصال");
+                alert("❌ حدث خطأ أثناء الإرسال، يرجى التحقق من الاتصال");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "💾 حفظ في الشيت";
