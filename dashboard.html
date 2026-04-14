@@ -11,8 +11,9 @@
         .btn-inspectors { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; }
         .btn-institutions { color: #6366f1 !important; border: 1px solid #6366f1 !important; }
         .btn-visits { color: #14b8a6 !important; border: 1px solid #14b8a6 !important; }
+        /* زر الأمر بالمهمة الجديد */
+        .btn-mission { color: #f59e0b !important; border: 1px solid #f59e0b !important; }
 
-        /* إحصائيات المراحل */
         .level-stats {
             margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;
@@ -42,6 +43,7 @@
             <a href="inspectors.html" class="btn btn-ghost btn-sm btn-inspectors">🔍 المفتشين</a>
             <a href="institutions.html" class="btn btn-ghost btn-sm btn-institutions">🏢 المؤسسات</a>
             <a href="visit.html" class="btn btn-ghost btn-sm btn-visits">📋 الزيارات</a>
+            <a href="mission.html" class="btn btn-ghost btn-sm btn-mission">📜 الأمر بالمهمة</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج 🚪</button>
         </div>
     </nav>
@@ -76,9 +78,18 @@
                     <div class="stat-value" id="count-visits">0</div>
                     <div class="stat-label">إجمالي الزيارات</div>
                     <div class="level-stats">
-                        <div class="level-item"><span class="level-count" id="v-pri">0</span><span class="level-name">ابتدائي</span></div>
-                        <div class="level-item"><span class="level-count" id="v-mid">0</span><span class="level-name">متوسط</span></div>
-                        <div class="level-item"><span class="level-count" id="v-sec">0</span><span class="level-name">ثانوي</span></div>
+                        <div class="level-item">
+                            <span class="level-count" id="v-pri">0</span>
+                            <span class="level-name">ابتدائي</span>
+                        </div>
+                        <div class="level-item">
+                            <span class="level-count" id="v-mid">0</span>
+                            <span class="level-name">متوسط</span>
+                        </div>
+                        <div class="level-item">
+                            <span class="level-count" id="v-sec">0</span>
+                            <span class="level-name">ثانوي</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -126,20 +137,22 @@
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFYuFdSudyuoDEd5npce03XBJ1kNvGsi1tmxrISa-1N8T7XNClxs9P4QDtGzK53-_Uw/exec";
 
-        // 1. جلب الإحصائيات ومعالجة عدد الزيارات حسب المرحلة
+        // 1. تحديث الإحصائيات (مؤسسات، مفتشين، وزيارات لكل مرحلة)
         async function updateStats() {
             try {
+                // جلب البيانات من ملف data.js
                 const insts = await fetchInstitutions(true);
                 const insps = await fetchInspectors(true);
                 const visits = await fetchVisits(true);
 
+                // تحديث الأرقام الرئيسية
                 document.getElementById('count-inst').innerText = insts.length;
                 document.getElementById('count-insp').innerText = insps.length;
                 document.getElementById('count-visits').innerText = visits.length;
 
+                // حساب التوزيع حسب المرحلة
                 let p = 0, m = 0, s = 0;
                 visits.forEach(v => {
-                    // فحص الحقل بالاسم العربي أو الإنجليزي
                     const lvl = (v['المرحلة'] || v['level'] || '').trim();
                     if (lvl === 'ابتدائي') p++;
                     else if (lvl === 'متوسط') m++;
@@ -152,7 +165,7 @@
             } catch (e) { console.error("Stats Error:", e); }
         }
 
-        // 2. عرض الحسابات المحلية
+        // 2. عرض الحسابات
         function showUsers() {
             const body = document.getElementById('usersTableBody');
             const users = getUsers();
@@ -170,7 +183,7 @@
 
         window.delUser = (un) => { if(confirm('هل أنت متأكد؟')) { deleteUser(un); showUsers(); } }
 
-        // 3. إرسال البيانات للرابط الجديد
+        // 3. إرسال البيانات
         document.getElementById('gsForm').onsubmit = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('gsBtn');
@@ -186,7 +199,6 @@
             });
 
             try {
-                // استخدام POST مع mode: no-cors للتعامل مع Apps Script
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
