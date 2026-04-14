@@ -7,35 +7,13 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .container { max-width: 900px; margin: 30px auto; }
-        .mission-card { 
-            background: #1e293b; 
-            padding: 30px; 
-            border-radius: 12px; 
-            border: 1px solid rgba(255,255,255,0.1); 
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
-        }
+        .mission-card { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .full-width { grid-column: span 2; }
         label { color: #cbd5e1; display: block; margin-bottom: 8px; font-weight: 500; }
-        input, select, textarea { 
-            width: 100%; 
-            padding: 12px; 
-            border-radius: 8px; 
-            border: 1px solid #334155; 
-            background: #0f172a; 
-            color: white; 
-            transition: border 0.3s; 
-        }
+        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; transition: border 0.3s; }
         input:focus, select:focus { border-color: #f59e0b; outline: none; }
-        
-        /* تنسيق خاص للطباعة */
-        @media print { 
-            .btn, .page-header, .form-actions { display: none !important; } 
-            body { background: white !important; color: black !important; }
-            .mission-card { border: none; background: white; color: black; box-shadow: none; } 
-            label { color: #333; }
-            input, select, textarea { border: 1px solid #ccc; color: black; background: white; } 
-        }
+        @media print { .btn, .page-header, .form-actions { display: none !important; } body { background: white !important; color: black !important; } .mission-card { border: none; background: white; color: black; box-shadow: none; } label { color: #333; } input, select, textarea { border: 1px solid #ccc; color: black; background: white; } }
     </style>
 </head>
 <body>
@@ -52,23 +30,23 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>الرقم التسلسلي</label>
-                        <input type="text" name="الرقم" required placeholder="مثال: 2026/001">
+                        <input type="text" name="الرقم" required>
                     </div>
 
                     <div class="form-group">
-                        <label>الرتبة</label>
-                        <select id="rankSelect" name="الرتبة" required onchange="filterInspectorsByRank()">
-                            <option value="">-- اختر الرتبة --</option>
-                            <option value="مفتش التعليم الابتدائي">مفتش التعليم الابتدائي</option>
-                            <option value="مفتش التعليم المتوسط">مفتش التعليم المتوسط</option>
-                            <option value="مفتش التعليم الثانوي">مفتش التعليم الثانوي</option>
+                        <label>الرتبة (المرحلة التعليمية)</label>
+                        <select id="rankSelect" name="الرتبة" required onchange="filterInspectorsByStage()">
+                            <option value="">-- اختر المرحلة --</option>
+                            <option value="ابتدائي">مفتش التعليم الابتدائي</option>
+                            <option value="متوسط">مفتش التعليم المتوسط</option>
+                            <option value="ثانوي">مفتش التعليم الثانوي</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>الاسم واللقب (المفتش المعني)</label>
+                        <label>الاسم واللقب (من عمود الاسم)</label>
                         <select id="inspectorSelect" name="الاسم واللقب" required>
-                            <option value="">-- اختر الرتبة أولاً --</option>
+                            <option value="">-- اختر المرحلة أولاً --</option>
                         </select>
                     </div>
 
@@ -99,7 +77,7 @@
 
                     <div class="form-group full-width">
                         <label>الملاحظة</label>
-                        <textarea name="الملاحظة" rows="3" placeholder="أدخل أي ملاحظات إضافية هنا..."></textarea>
+                        <textarea name="الملاحظة" rows="3"></textarea>
                     </div>
                 </div>
 
@@ -115,57 +93,67 @@
     <script src="app.js"></script>
 
     <script>
-        // رابط النشر الخاص بك
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYcwiQUJYKmMTKWFFpExIV_gDuRC2c-vSd6R7Ow-rsU24SGud6_6_qRl0YAV3BFwId/exec";
 
-        // دالة تصفية المفتشين بناءً على الرتبة المختارة
-        async function filterInspectorsByRank() {
-    const selectedRank = document.getElementById('rankSelect').value;
-    const inspectorSelect = document.getElementById('inspectorSelect');
-    
-    if (!selectedRank) {
-        inspectorSelect.innerHTML = '<option value="">-- اختر الرتبة أولاً --</option>';
-        return;
-    }
+        async function filterInspectorsByStage() {
+            const stage = document.getElementById('rankSelect').value;
+            const inspectorSelect = document.getElementById('inspectorSelect');
+            
+            if (!stage) {
+                inspectorSelect.innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
+                return;
+            }
 
-    // تحديد "المرحلة" المقابلة لكل رتبة بناءً على معطياتك
-    let targetStage = "";
-    if (selectedRank === "مفتش التعليم الابتدائي") targetStage = "ابتدائي";
-    else if (selectedRank === "مفتش التعليم المتوسط") targetStage = "متوسط";
-    else if (selectedRank === "مفتش التعليم الثانوي") targetStage = "ثانوي";
+            inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
 
-    inspectorSelect.innerHTML = '<option value="">⏳ جاري جلب المفتشين...</option>';
+            try {
+                // جلب المفتشين من data.js (الذي يجلبها من شيت المفتشين)
+                const allInspectors = await fetchInspectors(true); 
+                
+                // التصفية بناءً على عمود "المرحلة" والمطابقة مع القيمة المختارة
+                const filtered = allInspectors.filter(insp => {
+                    const dbStage = (insp['المرحلة'] || "").toString().trim();
+                    return dbStage === stage;
+                });
 
-    try {
-        // جلب البيانات من data.js
-        const allInspectors = await fetchInspectors(true); 
-        
-        // التصفية بناءً على عمود "المرحلة" (أو "stage")
-        const filtered = allInspectors.filter(insp => {
-            // نجلب القيمة من عمود "المرحلة" وننظفها من المسافات
-            const dbStage = (insp['المرحلة'] || insp['stage'] || '').toString().trim();
-            return dbStage === targetStage;
-        });
-
-        if (filtered.length > 0) {
-            inspectorSelect.innerHTML = '<option value="">-- اختر المفتش (${filtered.length}) --</option>';
-            filtered.forEach(insp => {
-                const name = insp['الاسم واللقب'] || insp['name'];
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                inspectorSelect.appendChild(option);
-            });
-        } else {
-            inspectorSelect.innerHTML = `<option value="">⚠️ لا يوجد مفتشون في مرحلة ${targetStage}</option>`;
-            // للتصحيح: طباعة البيانات في القنصل للتأكد من مسميات الأعمدة
-            console.log("البيانات المستلمة أول سطر:", allInspectors[0]);
+                if (filtered.length > 0) {
+                    inspectorSelect.innerHTML = '<option value="">-- اختر المفتش من القائمة --</option>';
+                    filtered.forEach(insp => {
+                        // إحضار الاسم من عمود "الاسم" كما طلبت
+                        const name = insp['الاسم'] || insp['الاسم واللقب'] || "اسم غير معروف";
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        inspectorSelect.appendChild(option);
+                    });
+                } else {
+                    inspectorSelect.innerHTML = `<option value="">⚠️ لا يوجد مفتشون في مرحلة (${stage})</option>`;
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
+            }
         }
-    } catch (error) {
-        console.error("Error fetching inspectors:", error);
-        inspectorSelect.innerHTML = '<option value="">❌ خطأ في تحميل البيانات</option>';
-    }
-}
-</script>
+
+        document.getElementById('missionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "⏳ جاري الحفظ...";
+
+            const formData = new FormData(e.target);
+            const params = new URLSearchParams();
+            params.append("action", "insertMission");
+            for (const pair of formData.entries()) { params.append(pair[0], pair[1]); }
+
+            try {
+                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: params });
+                alert("✅ تم تسجيل الأمر بمهمة بنجاح");
+                e.target.reset();
+                document.getElementById('inspectorSelect').innerHTML = '<option value="">-- اختر المرحلة أولاً --</option>';
+            } catch (err) { alert("❌ حدث خطأ أثناء الإرسال"); } 
+            finally { btn.disabled = false; btn.innerText = "💾 حفظ في الشيت"; }
+        };
+    </script>
 </body>
 </html>
