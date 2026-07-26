@@ -16,7 +16,7 @@
         .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; }
         label { font-weight: bold; font-size: 0.95rem; margin-bottom: 5px; display: block; color: #334155; }
         
-        /* 1. لون الخط في حقول الإدخال أسود واضح */
+        /* 1. لون الخط في حقول الإدخال أسود بوضوح */
         input, select { 
             width: 100%; 
             padding: 8px 12px; 
@@ -138,6 +138,8 @@
 
                 if (typeof getVisits === 'function') {
                     allVisitsData = await getVisits();
+                } else if (typeof allVisits !== 'undefined' && Array.isArray(allVisits)) {
+                    allVisitsData = allVisits;
                 } else if (localStorage.getItem('visits')) {
                     allVisitsData = JSON.parse(localStorage.getItem('visits'));
                 }
@@ -145,6 +147,25 @@
                 console.error("خطأ في جلب البيانات:", e);
             }
         });
+
+        // دالة المساعدة الآمنة لقراءة الحقول بناءً على الكود الخاص بك
+        function fetchField(obj, possibleKeys) {
+            if (!obj) return '';
+            // إذا كانت دالة getField المعتمدة لديك موجودة
+            if (typeof getField === 'function') {
+                for (let k of possibleKeys) {
+                    let val = getField(obj, k);
+                    if (val) return String(val).trim();
+                }
+            }
+            // قراءة مباشرة احتياطية
+            for (let k of possibleKeys) {
+                if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
+                    return String(obj[k]).trim();
+                }
+            }
+            return '';
+        }
 
         function toggleReportOptions() {
             const type = document.getElementById('reportType').value;
@@ -157,21 +178,14 @@
             const insSel = document.getElementById('inspectorFilter');
             insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
             
-            const filtered = inspectorsData.filter(i => (i['المرحلة'] || i.stage) === stage);
-            filtered.forEach(i => insSel.add(new Option(i['الاسم'] || i.name, i['الاسم'] || i.name)));
+            const filtered = inspectorsData.filter(i => fetchField(i, ['المرحلة', 'stage']) === stage);
+            filtered.forEach(i => {
+                const name = fetchField(i, ['الاسم', 'اسم المفتش', 'name']);
+                if (name) insSel.add(new Option(name, name));
+            });
         }
 
-        // دالة مرنة لجلب قيم الحقول بغض النظر عن لغة مفتاح الكائن
-        function getValue(item, keys) {
-            for (let key of keys) {
-                if (item && item[key] !== undefined && item[key] !== null && item[key] !== '') {
-                    return String(item[key]).trim();
-                }
-            }
-            return '';
-        }
-
-        // دالة مطابقة الموسم الرقمية والمرنة
+        // مطابقة مرنة للموسم الدراسي
         function isMatchingSeason(visitSeason, searchInput) {
             if (!searchInput || !searchInput.trim()) return true;
             if (!visitSeason) return false;
@@ -179,24 +193,19 @@
             const inputNums = searchInput.match(/\d+/g) || [];
             const visitNums = String(visitSeason).match(/\d+/g) || [];
 
-            if (inputNums.length === 0) {
-                return String(visitSeason).includes(searchInput.trim());
-            }
-
+            if (inputNums.length === 0) return String(visitSeason).includes(searchInput.trim());
             return inputNums.some(num => visitNums.includes(num));
         }
 
-        // دالة للحصول على تخصص المفتش (المادة) إما من سجل الزيارة مباشرة أو عبر جدول المفتشين
+        // استخراج التخصص من المفتش
         function getInspectorSpecialty(visit) {
-            let spec = getValue(visit, ['specialty', 'التخصص', 'تخصص']);
+            let spec = fetchField(visit, ['التخصص', 'تخصص', 'specialty']);
             if (spec) return spec;
 
-            const inspName = getValue(visit, ['inspector', 'المفتش', 'اسم المفتش']);
+            const inspName = fetchField(visit, ['المفتش', 'اسم المفتش', 'inspector']);
             if (inspName && inspectorsData.length > 0) {
-                const found = inspectorsData.find(i => (i['الاسم'] || i.name) === inspName);
-                if (found) {
-                    return getValue(found, ['التخصص', 'specialty', 'تخصص']);
-                }
+                const found = inspectorsData.find(i => fetchField(i, ['الاسم', 'اسم المفتش', 'name']) === inspName);
+                if (found) return fetchField(found, ['التخصص', 'specialty']);
             }
             return 'غير محدد';
         }
@@ -208,9 +217,9 @@
             const container = document.getElementById('reportOutput');
             container.innerHTML = '';
 
-            // تصفية الزيارات مرناً حسب الموسم
+            // تصفية الزيارات حسب 'الموسم الدراسي' أو 'الموسم'
             const visits = allVisitsData.filter(v => {
-                const vSeason = getValue(v, ['season', 'الموسم', 'الموسم الدراسي']);
+                const vSeason = fetchField(v, ['الموسم الدراسي', 'الموسم', 'season']);
                 return isMatchingSeason(vSeason, seasonInput);
             });
 
@@ -230,8 +239,8 @@
             const inspectorsMap = {};
 
             visits.forEach(v => {
-                const insp = getValue(v, ['inspector', 'المفتش', 'اسم المفتش']);
-                const inst = getValue(v, ['institution', 'المؤسسة', 'اسم المؤسسة']);
+                const insp = fetchField(v, ['المفتش', 'اسم المفتش', 'inspector']);
+                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
                 
                 if (!insp || !inst) return;
 
@@ -242,7 +251,9 @@
 
             const inspectorsList = Object.keys(inspectorsMap);
             if (inspectorsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center; font-weight:bold; padding:40px; color:#dc2626;">⚠️ لم يتم العثور على أية إحصائيات مطابقة للموسم الدراسي المدخل.</div>';
+                container.innerHTML = `<div style="text-align:center; font-weight:bold; padding:40px; color:#dc2626;">
+                    ⚠️ لم يتم العثور على أية إحصائيات مطابقة للموسم الدراسي (${seasonText}).
+                </div>`;
                 return;
             }
 
@@ -256,11 +267,7 @@
 
                 for (const [inst, count] of Object.entries(inspectorsMap[inspName])) {
                     totalVisits += count;
-                    rowsHtml += `<tr>
-                        <td>${index++}</td>
-                        <td style="text-align:right;">${inst}</td>
-                        <td>${count}</td>
-                    </tr>`;
+                    rowsHtml += `<tr><td>${index++}</td><td style="text-align:right;">${inst}</td><td>${count}</td></tr>`;
                 }
 
                 page.innerHTML = `
@@ -272,20 +279,8 @@
                     <div class="report-title">حصيلة الزيارات التفتيشية للموسم الدراسي ${seasonText}</div>
                     <div class="inspector-info">اسم السيد المفتش: ${inspName}</div>
                     <table class="report-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 10%;">#</th>
-                                <th>اسم المؤسسة المزارة</th>
-                                <th style="width: 25%;">عدد الزيارات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHtml}
-                            <tr class="total-row">
-                                <td colspan="2" style="text-align:left; padding-left:20px;">مجموع الزيارات:</td>
-                                <td>${totalVisits}</td>
-                            </tr>
-                        </tbody>
+                        <thead><tr><th style="width: 10%;">#</th><th>اسم المؤسسة المزارة</th><th style="width: 25%;">عدد الزيارات</th></tr></thead>
+                        <tbody>${rowsHtml}<tr class="total-row"><td colspan="2" style="text-align:left; padding-left:20px;">مجموع الزيارات:</td><td>${totalVisits}</td></tr></tbody>
                     </table>
                 `;
                 container.appendChild(page);
@@ -294,12 +289,12 @@
 
         // 2. تقرير فردي لمفتش
         function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
-            const inspVisits = visits.filter(v => getValue(v, ['inspector', 'المفتش', 'اسم المفتش']) === inspectorName);
+            const inspVisits = visits.filter(v => fetchField(v, ['المفتش', 'اسم المفتش', 'inspector']) === inspectorName);
             const instMap = {};
             let total = 0;
 
             inspVisits.forEach(v => {
-                const inst = getValue(v, ['institution', 'المؤسسة', 'اسم المؤسسة']);
+                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
                 if (inst) {
                     instMap[inst] = (instMap[inst] || 0) + 1;
                     total++;
@@ -336,17 +331,15 @@
 
         // 3. تقرير الزيارات حسب المواد (اعتماداً على تخصص المفتش)
         function renderSubjectsReport(visits, seasonText, state, container) {
-            // تصفية زيارات المرحلة الثانوية
-            const secVisits = visits.filter(v => getValue(v, ['stage', 'المرحلة']) === 'ثانوي');
+            const secVisits = visits.filter(v => fetchField(v, ['المرحلة', 'stage']) === 'ثانوي');
             
             const subjectsSet = new Set();
             const institutionsSet = new Set();
             const matrix = {};
 
             secVisits.forEach(v => {
-                // استخراج المادة مباشرة من تخصص المفتش
                 const subj = getInspectorSpecialty(v);
-                const inst = getValue(v, ['institution', 'المؤسسة', 'اسم المؤسسة']) || 'غير محددة';
+                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']) || 'غير محددة';
                 
                 subjectsSet.add(subj);
                 institutionsSet.add(inst);
@@ -367,12 +360,10 @@
                 return;
             }
 
-            // بناء ترويسة المواد الأفقية
             let headerHtml = '<tr><th>المؤسسة / تخصص المفتش (المادة)</th>';
             subjectsList.forEach(sub => { headerHtml += `<th>${sub}</th>`; });
             headerHtml += '<th>مجموع المؤسسة</th></tr>';
 
-            // بناء أسطر المؤسسات والزيارات
             let bodyHtml = '';
             const subjectTotals = {};
             subjectsList.forEach(s => subjectTotals[s] = 0);
@@ -393,11 +384,8 @@
                 bodyHtml += `<td style="font-weight:bold; background:#f8fafc;">${instTotal}</td></tr>`;
             });
 
-            // بناء سطر المجاميع النهائية للمواد
             let footerHtml = '<tr class="total-row"><td>مجموع زيارات المادة</td>';
-            subjectsList.forEach(sub => {
-                footerHtml += `<td>${subjectTotals[sub]}</td>`;
-            });
+            subjectsList.forEach(sub => { footerHtml += `<td>${subjectTotals[sub]}</td>`; });
             footerHtml += `<td>${grandTotal}</td></tr>`;
 
             page.innerHTML = `
@@ -418,7 +406,6 @@
             container.appendChild(page);
         }
 
-        // تصدير إلى Excel
         function exportToExcel() {
             const tables = document.querySelectorAll('.report-table');
             if (tables.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
@@ -431,7 +418,6 @@
             XLSX.writeFile(wb, `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        // تصدير إلى PDF
         function exportToPDF() {
             const element = document.getElementById('reportOutput');
             if (!element || element.children.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
