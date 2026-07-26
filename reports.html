@@ -42,21 +42,37 @@
             border: 1px solid #cbd5e1; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             page-break-before: always; 
+            position: relative;
         }
         .report-page:first-child { page-break-before: auto; }
 
-        .official-header { text-align: center; font-weight: bold; line-height: 1.5; margin-bottom: 25px; }
+        .official-header { text-align: center; font-weight: bold; line-height: 1.5; margin-bottom: 25px; color: #000; }
         .official-header .republic { font-size: 1.2rem; }
         .official-header .ministry { font-size: 1.1rem; }
         .official-header .directorate { text-align: right; font-size: 1.1rem; margin-top: 10px; }
-        .report-title { text-align: center; font-size: 1.6rem; font-weight: bold; margin: 20px 0; text-decoration: underline; color: #1e293b; }
+        .report-title { text-align: center; font-size: 1.6rem; font-weight: bold; margin: 20px 0; text-decoration: underline; color: #000; }
         
-        .inspector-info { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-right: 5px solid #0284c7; }
+        .inspector-info { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-right: 5px solid #0284c7; color: #000; }
 
-        .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1.05rem; }
-        .report-table th, .report-table td { border: 1px solid #000; padding: 8px 12px; text-align: center; }
-        .report-table th { background-color: #e2e8f0; font-weight: bold; color: #000; }
-        .report-table .total-row { font-weight: bold; background-color: #f1f5f9; }
+        /* اعتماد اللون الأسود الكامل لجداول التقرير */
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1.05rem; color: #000000 !important; }
+        .report-table th, .report-table td { border: 1px solid #000000 !important; padding: 8px 12px; text-align: center; color: #000000 !important; }
+        .report-table th { background-color: #e2e8f0; font-weight: bold; color: #000000 !important; }
+        .report-table .total-row { font-weight: bold; background-color: #f1f5f9; color: #000000 !important; }
+
+        /* تذييل الإمضاء والتاريخ في الجهة اليسرى أسفل الجدول */
+        .report-footer { 
+            margin-top: 30px; 
+            float: left; 
+            text-align: center; 
+            font-size: 1.15rem; 
+            font-weight: bold; 
+            color: #000000; 
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .clear-fix { clear: both; }
 
         @media print {
             .controls-card, .btn-group { display: none !important; }
@@ -83,16 +99,15 @@
                 <select id="reportType" onchange="toggleReportOptions()">
                     <option value="season">1- حصيلة شاملة للموسم الدراسي</option>
                     <option value="individual">2- تقرير فردي لمفتش محدد</option>
-                    <option value="subjects">3- تقرير حسب مواد المفتشين (المرحلة الثانوية)</option>
+                    <option value="subjects">3- تقرير حسب مواد المفتشين</option>
                 </select>
             </div>
             <div id="stageBox" style="display:none;">
-                <label>المرحلة</label>
+                <label>المرحلة التعليمية</label>
                 <select id="stageFilter" onchange="loadInspectorsByStage()">
-                    <option value="">-- اختر المرحلة --</option>
-                    <option value="ابتدائي">ابتدائي</option>
-                    <option value="متوسط">متوسط</option>
                     <option value="ثانوي">ثانوي</option>
+                    <option value="متوسط">متوسط</option>
+                    <option value="ابتدائي">ابتدائي</option>
                 </select>
             </div>
             <div id="inspectorBox" style="display:none;">
@@ -117,9 +132,8 @@
         </div>
     </div>
 
-    <!-- تدرّج التحميل وحماية الجلسة -->
+    <!-- حماية الجلسة وتخطي الخروج التلقائي -->
     <script>
-        // إلغاء إعادة التوجيه التلقائية الصادرة من app.js في هذه الصفحة
         window.requireAuth = function() { return true; };
     </script>
     <script src="app.js"></script>
@@ -127,7 +141,6 @@
     <script src="visit.js"></script>
 
     <script>
-        // إبقاء إلغاء الفحص فعالاً
         window.requireAuth = function() { return true; };
 
         let allVisitsData = [];
@@ -147,6 +160,27 @@
                 }
             }
             return '';
+        }
+
+        // إرجاع تاريخ اليوم بصيغة YYYY/MM/DD
+        function getFormattedTodayDate() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd}`;
+        }
+
+        // بضعة أسطر لبناء تذييل الإمضاء والتاريخ
+        function getReportFooterHTML(state) {
+            const todayDate = getFormattedTodayDate();
+            return `
+                <div class="report-footer">
+                    <div>مديرية التربية لولاية : ${state} : ${todayDate}</div>
+                    <div style="margin-top: 5px;">إمضاء مدير التربية</div>
+                </div>
+                <div class="clear-fix"></div>
+            `;
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -171,6 +205,7 @@
             const type = document.getElementById('reportType').value;
             document.getElementById('stageBox').style.display = (type === 'individual' || type === 'subjects') ? 'block' : 'none';
             document.getElementById('inspectorBox').style.display = (type === 'individual') ? 'block' : 'none';
+            if (type === 'individual') loadInspectorsByStage();
         }
 
         function loadInspectorsByStage() {
@@ -197,7 +232,7 @@
         }
 
         function getSpecialtyForVisit(v) {
-            let spec = f(v, ['التخصص', 'specialty']);
+            let spec = f(v, ['التخصص', 'specialty', 'المادة']);
             if (spec) return spec;
 
             const inspName = f(v, ['المفتش', 'اسم المفتش', 'الاسم الكامل', 'fullName', 'inspector']);
@@ -234,10 +269,12 @@
                 if (!inspector) { alert('الرجاء اختيار المفتش'); return; }
                 renderIndividualReport(visits, inspector, seasonInput, state, container);
             } else if (type === 'subjects') {
-                renderSubjectsReport(visits, seasonInput, state, container);
+                const stage = document.getElementById('stageFilter').value || 'ثانوي';
+                renderSubjectsReport(visits, stage, seasonInput, state, container);
             }
         }
 
+        // 1. تقرير الموسم الشامل
         function renderSeasonReport(visits, seasonText, state, container) {
             const inspectorsMap = {};
 
@@ -285,11 +322,13 @@
                         <thead><tr><th style="width: 10%;">#</th><th>اسم المؤسسة المزارة</th><th style="width: 25%;">عدد الزيارات</th></tr></thead>
                         <tbody>${rowsHtml}<tr class="total-row"><td colspan="2" style="text-align:left; padding-left:20px;">مجموع الزيارات:</td><td>${totalVisits}</td></tr></tbody>
                     </table>
+                    ${getReportFooterHTML(state)}
                 `;
                 container.appendChild(page);
             });
         }
 
+        // 2. تقرير فردي لمفتش
         function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
             const inspVisits = visits.filter(v => f(v, ['المفتش', 'اسم المفتش', 'الاسم الكامل', 'fullName', 'inspector']) === inspectorName);
             const instMap = {};
@@ -327,21 +366,23 @@
                         <tr class="total-row"><td colspan="2">المجموع الكلي:</td><td>${total}</td></tr>
                     </tbody>
                 </table>
+                ${getReportFooterHTML(state)}
             `;
             container.appendChild(page);
         }
 
-        function renderSubjectsReport(visits, seasonText, state, container) {
-            const secVisits = visits.filter(v => {
+        // 3. تقرير الزيارات حسب مواد المفتشين (مفصل ومفصول حسب المرحلة التعليمية المختارة)
+        function renderSubjectsReport(visits, selectedStage, seasonText, state, container) {
+            const stageVisits = visits.filter(v => {
                 const st = f(v, ['المرحلة', 'المرحلة التعليمية', 'level', 'stage']);
-                return st === 'ثانوي';
+                return st === selectedStage;
             });
             
             const subjectsSet = new Set();
             const institutionsSet = new Set();
             const matrix = {};
 
-            secVisits.forEach(v => {
+            stageVisits.forEach(v => {
                 const subj = getSpecialtyForVisit(v);
                 const inst = f(v, ['المؤسسة', 'اسم المؤسسة', 'institution']) || 'غير محددة';
                 
@@ -359,7 +400,7 @@
             page.className = 'report-page';
 
             if (institutionsList.length === 0) {
-                page.innerHTML = '<div style="text-align:center; padding:30px; font-weight:bold; color:#dc2626;">⚠️ لا توجد زيارات مسجلة للمرحلة الثانوية في هذا الموسم.</div>';
+                page.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold; color:#dc2626;">⚠️ لا توجد زيارات مسجلة لمرحلة (${selectedStage}) في هذا الموسم.</div>`;
                 container.appendChild(page);
                 return;
             }
@@ -398,7 +439,7 @@
                     <div class="ministry">وزارة التربية الوطنية</div>
                     <div class="directorate">مديرية التربية لولاية : ${state}</div>
                 </div>
-                <div class="report-title">حوصلة الزيارات التفتيشية حسب مواد المفتشين (المرحلة الثانوية) - ${seasonText}</div>
+                <div class="report-title">حوصلة الزيارات التفتيشية حسب مواد المفتشين (مرحلة ${selectedStage}) - ${seasonText}</div>
                 <div style="overflow-x: auto;">
                     <table class="report-table">
                         <thead>${headerHtml}</thead>
@@ -406,6 +447,7 @@
                         <tfoot>${footerHtml}</tfoot>
                     </table>
                 </div>
+                ${getReportFooterHTML(state)}
             `;
             container.appendChild(page);
         }
