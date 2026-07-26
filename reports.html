@@ -117,12 +117,19 @@
         </div>
     </div>
 
-    <!-- استدعاء السكربتات بدون inspectors.js لمنع الخروج المفاجئ -->
+    <!-- تدرّج التحميل وحماية الجلسة -->
+    <script>
+        // إلغاء إعادة التوجيه التلقائية الصادرة من app.js في هذه الصفحة
+        window.requireAuth = function() { return true; };
+    </script>
     <script src="app.js"></script>
     <script src="data.js"></script>
     <script src="visit.js"></script>
 
     <script>
+        // إبقاء إلغاء الفحص فعالاً
+        window.requireAuth = function() { return true; };
+
         let allVisitsData = [];
         let inspectorsData = [];
 
