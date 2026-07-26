@@ -15,7 +15,19 @@
         .controls-card { background: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; }
         label { font-weight: bold; font-size: 0.95rem; margin-bottom: 5px; display: block; color: #334155; }
-        input, select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; }
+        
+        /* 1. التعديل الأول: جعل لون الخط في حقول الإدخال أسود بوضوح */
+        input, select { 
+            width: 100%; 
+            padding: 8px 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 1rem; 
+            color: #000000 !important; 
+            background-color: #ffffff !important; 
+            font-weight: 500;
+        }
+
         .btn-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         
         /* أزرار التصدير والطباعة */
@@ -60,13 +72,12 @@
 </head>
 <body>
 
-    <!-- أدوات التكم في التقرير -->
     <div class="controls-card">
         <h2>📊 لوحة إنشاء التقارير التفتيشية</h2>
         <div class="controls-grid">
             <div>
                 <label>الموسم الدراسي</label>
-                <input type="text" id="reportSeason" value="2025 / 2026" placeholder="مثال: 2025 / 2026">
+                <input type="text" id="reportSeason" value="2025 / 2026" placeholder="أدخل السنة أو الموسم">
             </div>
             <div>
                 <label>مديرية التربية لولاية</label>
@@ -105,7 +116,6 @@
         </div>
     </div>
 
-    <!-- مخرجات التقرير المجهزة للطباعة والتصدير -->
     <div id="reportOutput">
         <div style="text-align:center; padding: 50px; color:#64748b;">
             💡 حدد خيارات التقرير أعلاه ثم اضغط على "عرض التقرير".
@@ -122,7 +132,6 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // جلب بيانات الزيارات والمفتشين
                 inspectorsData = await fetchInspectors();
                 if (typeof getVisits === 'function') {
                     allVisitsData = await getVisits();
@@ -149,29 +158,46 @@
             filtered.forEach(i => insSel.add(new Option(i['الاسم'], i['الاسم'])));
         }
 
+        // 2. التعديل الثاني: دالة فحص ومطابقة مرنة للموسم الدراسي
+        function isMatchingSeason(visitSeason, searchInput) {
+            if (!searchInput || !searchInput.trim()) return true; // إذا لم يُدخل شيء يقبل الكل
+            if (!visitSeason) return false;
+
+            // استخراج كل الأرقام من القيمة المدخلة والقيمة المسجلة بالزيارة
+            const inputNumbers = searchInput.match(/\d+/g) || [];
+            const visitNumbers = String(visitSeason).match(/\d+/g) || [];
+
+            if (inputNumbers.length === 0) {
+                return String(visitSeason).includes(searchInput.trim());
+            }
+
+            // فحص وجود أي رقم مدخل داخل أرقام سجل الزيارة
+            return inputNumbers.some(num => visitNumbers.includes(num) || String(visitSeason).includes(num));
+        }
+
         function generateReport() {
             const type = document.getElementById('reportType').value;
-            const season = document.getElementById('reportSeason').value;
+            const seasonInput = document.getElementById('reportSeason').value;
             const state = document.getElementById('reportState').value;
             const container = document.getElementById('reportOutput');
             container.innerHTML = '';
 
-            // تصفية البيانات حسب الموسم
-            const visits = allVisitsData.filter(v => !season || v.season === season || v['الموسم'] === season);
+            // تصفية الزيارات بالاعتماد على المطابقة الرقمية المرنة للموسم
+            const visits = allVisitsData.filter(v => isMatchingSeason(v.season || v['الموسم'], seasonInput));
 
             if (type === 'season') {
-                renderSeasonReport(visits, season, state, container);
+                renderSeasonReport(visits, seasonInput, state, container);
             } else if (type === 'individual') {
                 const inspector = document.getElementById('inspectorFilter').value;
                 if (!inspector) { alert('الرجاء اختيار المفتش'); return; }
-                renderIndividualReport(visits, inspector, season, state, container);
+                renderIndividualReport(visits, inspector, seasonInput, state, container);
             } else if (type === 'subjects') {
-                renderSubjectsReport(visits, season, state, container);
+                renderSubjectsReport(visits, seasonInput, state, container);
             }
         }
 
         // 1. تقرير الموسم الكامل (كل مفتش في ورقة مستقلة)
-        function renderSeasonReport(visits, season, state, container) {
+        function renderSeasonReport(visits, seasonText, state, container) {
             const inspectorsMap = {};
 
             visits.forEach(v => {
@@ -186,7 +212,7 @@
 
             const inspectorsList = Object.keys(inspectorsMap);
             if (inspectorsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;">لا توجد بيانات زيارات لهذا الموسم.</div>';
+                container.innerHTML = '<div style="text-align:center; font-weight:bold; padding:20px;">لا توجد بيانات زيارات مطابقة للموسم الدراسي المكتوب.</div>';
                 return;
             }
 
@@ -213,7 +239,7 @@
                         <div class="ministry">وزارة التربية الوطنية</div>
                         <div class="directorate">مديرية التربية لولاية : ${state}</div>
                     </div>
-                    <div class="report-title">حصيلة الزيارات التفتيشية للموسم الدراسي ${season}</div>
+                    <div class="report-title">حصيلة الزيارات التفتيشية للموسم الدراسي ${seasonText}</div>
                     <div class="inspector-info">اسم السيد المفتش: ${inspName}</div>
                     <table class="report-table">
                         <thead>
@@ -237,7 +263,7 @@
         }
 
         // 2. تقرير فردي لمفتش
-        function renderIndividualReport(visits, inspectorName, season, state, container) {
+        function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
             const inspVisits = visits.filter(v => (v.inspector || v['المفتش']) === inspectorName);
             const instMap = {};
             let total = 0;
@@ -265,7 +291,7 @@
                     <div class="ministry">وزارة التربية الوطنية</div>
                     <div class="directorate">مديرية التربية لولاية : ${state}</div>
                 </div>
-                <div class="report-title">تقرير حصيلة الزيارات التفتيشية الفردية (${season})</div>
+                <div class="report-title">تقرير حصيلة الزيارات التفتيشية الفردية (${seasonText})</div>
                 <div class="inspector-info">المفتش: ${inspectorName}</div>
                 <table class="report-table">
                     <thead><tr><th>#</th><th>المؤسسة المزارة</th><th>عدد الزيارات</th></tr></thead>
@@ -278,8 +304,8 @@
             container.appendChild(page);
         }
 
-        // 3. تقرير الزيارات حسب المواد (المرحلة الثانوية أفقياً وعمودياً)
-        function renderSubjectsReport(visits, season, state, container) {
+        // 3. تقرير الزيارات حسب المواد (المرحلة الثانوية)
+        function renderSubjectsReport(visits, seasonText, state, container) {
             const secVisits = visits.filter(v => (v.stage || v['المرحلة']) === 'ثانوي');
             
             const subjectsSet = new Set();
@@ -303,12 +329,10 @@
             const page = document.createElement('div');
             page.className = 'report-page';
 
-            // بناء رأس الجدول أفقياً المواد
             let headerHtml = '<tr><th>المؤسسة / المادة</th>';
             subjectsList.forEach(sub => { headerHtml += `<th>${sub}</th>`; });
             headerHtml += '<th>مجموع المؤسسة</th></tr>';
 
-            // بناء الصفوف العمودية للمؤسسات
             let bodyHtml = '';
             const subjectTotals = {};
             subjectsList.forEach(s => subjectTotals[s] = 0);
@@ -329,7 +353,6 @@
                 bodyHtml += `<td style="font-weight:bold; background:#f8fafc;">${instTotal}</td></tr>`;
             });
 
-            // صف المجاميع السفلية
             let footerHtml = '<tr class="total-row"><td>مجموع المادة</td>';
             subjectsList.forEach(sub => {
                 footerHtml += `<td>${subjectTotals[sub]}</td>`;
@@ -342,11 +365,11 @@
                     <div class="ministry">وزارة التربية الوطنية</div>
                     <div class="directorate">مديرية التربية لولاية : ${state}</div>
                 </div>
-                <div class="report-title">حوصلة الزيارات التفتيشية حسب المواد (المرحلة الثانوية) - ${season}</div>
+                <div class="report-title">حوصلة الزيارات التفتيشية حسب المواد (المرحلة الثانوية) - ${seasonText}</div>
                 <div style="overflow-x: auto;">
                     <table class="report-table">
                         <thead>${headerHtml}</thead>
-                        <tbody>${bodyHtml}</tbody>
+                        <tbody>${bodyHtml || '<tr><td colspan="100%">لا توجد زيارات مسجلة للمرحلة الثانوية في هذا الموسم</td></tr>'}</tbody>
                         <tfoot>${footerHtml}</tfoot>
                     </table>
                 </div>
@@ -354,7 +377,7 @@
             container.appendChild(page);
         }
 
-        // 4. تصدير إلى إكسل Excel
+        // 4. تصدير إلى Excel
         function exportToExcel() {
             const tables = document.querySelectorAll('.report-table');
             if (tables.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
