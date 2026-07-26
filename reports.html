@@ -1,313 +1,179 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حوصلة التقارير التفتيشية</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- مكتبات التصدير (Excel و PDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="app.js"></script>
+<script src="data.js"></script>
+<script src="visit.js"></script>
 
-    <style>
-        body { font-family: 'Sakkal Majalla', Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
-        .controls-card { background: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; }
-        label { font-weight: bold; font-size: 0.95rem; margin-bottom: 5px; display: block; color: #334155; }
+<script>
+    let allVisitsData = [];
+    let inspectorsData = [];
+
+    // دالة مرنة جداً لجلب أي قيمة من الكائن بغض النظر عن التسمية
+    function getVal(obj, possibleNames) {
+        if (!obj || typeof obj !== 'object') return '';
         
-        /* 1. لون الخط في حقول الإدخال أسود بوضوح */
-        input, select { 
-            width: 100%; 
-            padding: 8px 12px; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 6px; 
-            font-size: 1rem; 
-            color: #000000 !important; 
-            background-color: #ffffff !important; 
-            font-weight: 500;
-        }
-
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
-        
-        /* أزرار التصدير والطباعة */
-        .btn-action { padding: 10px 18px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; gap: 6px; }
-        .btn-print { background-color: #0284c7; }
-        .btn-excel { background-color: #16a34a; }
-        .btn-pdf { background-color: #dc2626; }
-
-        /* منطقة التقرير الرسمية للطباعة والتصدير */
-        #reportOutput { background: #ffffff; padding: 20px; min-height: 800px; }
-        
-        .report-page { 
-            background: white; 
-            padding: 30px; 
-            margin-bottom: 30px; 
-            border: 1px solid #cbd5e1; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            page-break-before: always; 
-        }
-        .report-page:first-child { page-break-before: auto; }
-
-        .official-header { text-align: center; font-weight: bold; line-height: 1.5; margin-bottom: 25px; }
-        .official-header .republic { font-size: 1.2rem; }
-        .official-header .ministry { font-size: 1.1rem; }
-        .official-header .directorate { text-align: right; font-size: 1.1rem; margin-top: 10px; }
-        .report-title { text-align: center; font-size: 1.6rem; font-weight: bold; margin: 20px 0; text-decoration: underline; color: #1e293b; }
-        
-        .inspector-info { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-right: 5px solid #0284c7; }
-
-        /* جداول التقرير */
-        .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1.05rem; }
-        .report-table th, .report-table td { border: 1px solid #000; padding: 8px 12px; text-align: center; }
-        .report-table th { background-color: #e2e8f0; font-weight: bold; color: #000; }
-        .report-table .total-row { font-weight: bold; background-color: #f1f5f9; }
-
-        @media print {
-            .controls-card, .btn-group { display: none !important; }
-            body { padding: 0; background: white; }
-            .report-page { border: none; box-shadow: none; padding: 0; margin: 0; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="controls-card">
-        <h2>📊 لوحة إنشاء التقارير التفتيشية</h2>
-        <div class="controls-grid">
-            <div>
-                <label>الموسم الدراسي</label>
-                <input type="text" id="reportSeason" value="2025 / 2026" placeholder="أدخل السنة أو الموسم">
-            </div>
-            <div>
-                <label>مديرية التربية لولاية</label>
-                <input type="text" id="reportState" value="توقرت" placeholder="أدخل اسم الولاية">
-            </div>
-            <div>
-                <label>نوع التقرير</label>
-                <select id="reportType" onchange="toggleReportOptions()">
-                    <option value="season">1- حصيلة شاملة للموسم الدراسي</option>
-                    <option value="individual">2- تقرير فردي لمفتش محدد</option>
-                    <option value="subjects">3- تقرير حسب مواد المفتشين (المرحلة الثانوية)</option>
-                </select>
-            </div>
-            <div id="stageBox" style="display:none;">
-                <label>المرحلة</label>
-                <select id="stageFilter" onchange="loadInspectorsByStage()">
-                    <option value="">-- اختر المرحلة --</option>
-                    <option value="ابتدائي">ابتدائي</option>
-                    <option value="متوسط">متوسط</option>
-                    <option value="ثانوي">ثانوي</option>
-                </select>
-            </div>
-            <div id="inspectorBox" style="display:none;">
-                <label>اسم المفتش</label>
-                <select id="inspectorFilter">
-                    <option value="">-- اختر المفتش --</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="btn-group">
-            <button class="btn-action btn-print" onclick="generateReport()">🔍 عرض التقرير</button>
-            <button class="btn-action btn-print" style="background:#475569;" onclick="window.print()">🖨️ طباعة التقرير</button>
-            <button class="btn-action btn-excel" onclick="exportToExcel()">📊 تصدير Excel</button>
-            <button class="btn-action btn-pdf" onclick="exportToPDF()">📄 تصدير PDF</button>
-        </div>
-    </div>
-
-    <div id="reportOutput">
-        <div style="text-align:center; padding: 50px; color:#64748b;">
-            💡 حدد خيارات التقرير أعلاه ثم اضغط على "عرض التقرير".
-        </div>
-    </div>
-
-    <script src="app.js"></script>
-    <script src="data.js"></script>
-    <script src="visit.js"></script>
-
-    <script>
-        let allVisitsData = [];
-        let inspectorsData = [];
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                if (typeof fetchInspectors === 'function') {
-                    inspectorsData = await fetchInspectors();
-                }
-
-                if (typeof getVisits === 'function') {
-                    allVisitsData = await getVisits();
-                } else if (typeof allVisits !== 'undefined' && Array.isArray(allVisits)) {
-                    allVisitsData = allVisits;
-                } else if (localStorage.getItem('visits')) {
-                    allVisitsData = JSON.parse(localStorage.getItem('visits'));
-                }
-            } catch (e) {
-                console.error("خطأ في جلب البيانات:", e);
+        // 1. تجربة الدالة الخاصة بك إن وجدت
+        if (typeof getField === 'function') {
+            for (let name of possibleNames) {
+                let v = getField(obj, name);
+                if (v !== undefined && v !== null && v !== '') return String(v).trim();
             }
+        }
+
+        // 2. مطابقة مباشرة أو جزئية للمفاتيح
+        const keys = Object.keys(obj);
+        for (let target of possibleNames) {
+            // مطابقة مطابقة تامة
+            if (obj[target] !== undefined && obj[target] !== null && obj[target] !== '') {
+                return String(obj[target]).trim();
+            }
+            // مطابقة جزئية (تتجاهل المسافات وتغطي الاختلافات)
+            let foundKey = keys.find(k => k.replace(/\s+/g, '').includes(target.replace(/\s+/g, '')));
+            if (foundKey && obj[foundKey] !== undefined && obj[foundKey] !== null && obj[foundKey] !== '') {
+                return String(obj[foundKey]).trim();
+            }
+        }
+        return '';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // 1. جلب المفتشين
+            if (typeof fetchInspectors === 'function') {
+                inspectorsData = await fetchInspectors();
+            }
+
+            // 2. جلب الزيارات بطريقة مضمونة المباشرة والاحتياطية
+            if (typeof getVisits === 'function') {
+                allVisitsData = await getVisits();
+            } else if (typeof loadVisits === 'function') {
+                await loadVisits();
+                if (typeof allVisits !== 'undefined') allVisitsData = allVisits;
+            } else if (localStorage.getItem('visits')) {
+                allVisitsData = JSON.parse(localStorage.getItem('visits'));
+            }
+
+            // إذا لم يتم الجلب، نحاول الاتصال المباشر بالرابط
+            if ((!allVisitsData || allVisitsData.length === 0) && typeof SCRIPT_URL !== 'undefined') {
+                const res = await fetch(`${SCRIPT_URL}?action=getVisits`);
+                const json = await res.json();
+                allVisitsData = json.data || json;
+            }
+
+            console.log("تم تحميل الزيارات:", allVisitsData);
+        } catch (e) {
+            console.error("خطأ أثناء تحميل البيانات:", e);
+        }
+    });
+
+    function toggleReportOptions() {
+        const type = document.getElementById('reportType').value;
+        document.getElementById('stageBox').style.display = (type === 'individual' || type === 'subjects') ? 'block' : 'none';
+        document.getElementById('inspectorBox').style.display = (type === 'individual') ? 'block' : 'none';
+    }
+
+    async function loadInspectorsByStage() {
+        const stage = document.getElementById('stageFilter').value;
+        const insSel = document.getElementById('inspectorFilter');
+        insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
+        
+        const filtered = inspectorsData.filter(i => getVal(i, ['المرحلة', 'stage']) === stage);
+        filtered.forEach(i => {
+            const name = getVal(i, ['الاسم', 'اسم المفتش', 'name']);
+            if (name) insSel.add(new Option(name, name));
+        });
+    }
+
+    // مطابقة السنوات والمواسم
+    function isMatchingSeason(visitSeason, searchInput) {
+        if (!searchInput || !searchInput.trim()) return true;
+        if (!visitSeason) return false;
+
+        const inputNums = searchInput.match(/\d+/g) || [];
+        const visitNums = String(visitSeason).match(/\d+/g) || [];
+
+        if (inputNums.length === 0) return String(visitSeason).includes(searchInput.trim());
+        return inputNums.some(num => visitNums.includes(num));
+    }
+
+    // استخراج تخصص المفتش
+    function getInspectorSpecialty(visit) {
+        let spec = getVal(visit, ['التخصص', 'تخصص', 'specialty']);
+        if (spec) return spec;
+
+        const inspName = getVal(visit, ['اسم المفتش', 'المفتش', 'inspector']);
+        if (inspName && inspectorsData.length > 0) {
+            const found = inspectorsData.find(i => getVal(i, ['الاسم', 'اسم المفتش', 'name']) === inspName);
+            if (found) return getVal(found, ['التخصص', 'تخصص', 'specialty']);
+        }
+        return 'غير محدد';
+    }
+
+    function generateReport() {
+        const type = document.getElementById('reportType').value;
+        const seasonInput = document.getElementById('reportSeason').value;
+        const state = document.getElementById('reportState').value;
+        const container = document.getElementById('reportOutput');
+        container.innerHTML = '';
+
+        // تأكيد وجود البيانات
+        if (!allVisitsData || allVisitsData.length === 0) {
+            alert('⚠️ لم يتم العثور على أي زيارات محمّلة! تحقق من الاتصال بالإنترنت أو رابط شيت جوجل.');
+            return;
+        }
+
+        // تصفية الزيارات حسب الموسم
+        const visits = allVisitsData.filter(v => {
+            const vSeason = getVal(v, ['الموسم الدراسي', 'الموسم', 'season']);
+            return isMatchingSeason(vSeason, seasonInput);
         });
 
-        // دالة المساعدة الآمنة لقراءة الحقول بناءً على الكود الخاص بك
-        function fetchField(obj, possibleKeys) {
-            if (!obj) return '';
-            // إذا كانت دالة getField المعتمدة لديك موجودة
-            if (typeof getField === 'function') {
-                for (let k of possibleKeys) {
-                    let val = getField(obj, k);
-                    if (val) return String(val).trim();
-                }
-            }
-            // قراءة مباشرة احتياطية
-            for (let k of possibleKeys) {
-                if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
-                    return String(obj[k]).trim();
-                }
-            }
-            return '';
+        if (visits.length === 0) {
+            alert(`⚠️ تم تحميل ${allVisitsData.length} زيارة، لكن لا توجد أية زيارة تطابق الموسم (${seasonInput})!`);
+            return;
         }
 
-        function toggleReportOptions() {
-            const type = document.getElementById('reportType').value;
-            document.getElementById('stageBox').style.display = (type === 'individual' || type === 'subjects') ? 'block' : 'none';
-            document.getElementById('inspectorBox').style.display = (type === 'individual') ? 'block' : 'none';
+        if (type === 'season') {
+            renderSeasonReport(visits, seasonInput, state, container);
+        } else if (type === 'individual') {
+            const inspector = document.getElementById('inspectorFilter').value;
+            if (!inspector) { alert('الرجاء اختيار المفتش أولاً'); return; }
+            renderIndividualReport(visits, inspector, seasonInput, state, container);
+        } else if (type === 'subjects') {
+            renderSubjectsReport(visits, seasonInput, state, container);
         }
+    }
 
-        async function loadInspectorsByStage() {
-            const stage = document.getElementById('stageFilter').value;
-            const insSel = document.getElementById('inspectorFilter');
-            insSel.innerHTML = '<option value="">-- اختر المفتش --</option>';
+    // 1. تقرير الموسم الشامل
+    function renderSeasonReport(visits, seasonText, state, container) {
+        const inspectorsMap = {};
+
+        visits.forEach(v => {
+            const insp = getVal(v, ['اسم المفتش', 'المفتش', 'inspector']);
+            const inst = getVal(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
             
-            const filtered = inspectorsData.filter(i => fetchField(i, ['المرحلة', 'stage']) === stage);
-            filtered.forEach(i => {
-                const name = fetchField(i, ['الاسم', 'اسم المفتش', 'name']);
-                if (name) insSel.add(new Option(name, name));
-            });
+            if (!insp || !inst) return;
+
+            if (!inspectorsMap[insp]) inspectorsMap[insp] = {};
+            if (!inspectorsMap[insp][inst]) inspectorsMap[insp][inst] = 0;
+            inspectorsMap[insp][inst]++;
+        });
+
+        const inspectorsList = Object.keys(inspectorsMap);
+        if (inspectorsList.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:red; font-weight:bold;">⚠️ لم يتم التعرف على أسماء المفتشين أو المؤسسات في البيانات.</div>';
+            return;
         }
 
-        // مطابقة مرنة للموسم الدراسي
-        function isMatchingSeason(visitSeason, searchInput) {
-            if (!searchInput || !searchInput.trim()) return true;
-            if (!visitSeason) return false;
-
-            const inputNums = searchInput.match(/\d+/g) || [];
-            const visitNums = String(visitSeason).match(/\d+/g) || [];
-
-            if (inputNums.length === 0) return String(visitSeason).includes(searchInput.trim());
-            return inputNums.some(num => visitNums.includes(num));
-        }
-
-        // استخراج التخصص من المفتش
-        function getInspectorSpecialty(visit) {
-            let spec = fetchField(visit, ['التخصص', 'تخصص', 'specialty']);
-            if (spec) return spec;
-
-            const inspName = fetchField(visit, ['المفتش', 'اسم المفتش', 'inspector']);
-            if (inspName && inspectorsData.length > 0) {
-                const found = inspectorsData.find(i => fetchField(i, ['الاسم', 'اسم المفتش', 'name']) === inspName);
-                if (found) return fetchField(found, ['التخصص', 'specialty']);
-            }
-            return 'غير محدد';
-        }
-
-        function generateReport() {
-            const type = document.getElementById('reportType').value;
-            const seasonInput = document.getElementById('reportSeason').value;
-            const state = document.getElementById('reportState').value;
-            const container = document.getElementById('reportOutput');
-            container.innerHTML = '';
-
-            // تصفية الزيارات حسب 'الموسم الدراسي' أو 'الموسم'
-            const visits = allVisitsData.filter(v => {
-                const vSeason = fetchField(v, ['الموسم الدراسي', 'الموسم', 'season']);
-                return isMatchingSeason(vSeason, seasonInput);
-            });
-
-            if (type === 'season') {
-                renderSeasonReport(visits, seasonInput, state, container);
-            } else if (type === 'individual') {
-                const inspector = document.getElementById('inspectorFilter').value;
-                if (!inspector) { alert('الرجاء اختيار المفتش'); return; }
-                renderIndividualReport(visits, inspector, seasonInput, state, container);
-            } else if (type === 'subjects') {
-                renderSubjectsReport(visits, seasonInput, state, container);
-            }
-        }
-
-        // 1. تقرير الموسم الكامل
-        function renderSeasonReport(visits, seasonText, state, container) {
-            const inspectorsMap = {};
-
-            visits.forEach(v => {
-                const insp = fetchField(v, ['المفتش', 'اسم المفتش', 'inspector']);
-                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
-                
-                if (!insp || !inst) return;
-
-                if (!inspectorsMap[insp]) inspectorsMap[insp] = {};
-                if (!inspectorsMap[insp][inst]) inspectorsMap[insp][inst] = 0;
-                inspectorsMap[insp][inst]++;
-            });
-
-            const inspectorsList = Object.keys(inspectorsMap);
-            if (inspectorsList.length === 0) {
-                container.innerHTML = `<div style="text-align:center; font-weight:bold; padding:40px; color:#dc2626;">
-                    ⚠️ لم يتم العثور على أية إحصائيات مطابقة للموسم الدراسي (${seasonText}).
-                </div>`;
-                return;
-            }
-
-            inspectorsList.forEach(inspName => {
-                const page = document.createElement('div');
-                page.className = 'report-page';
-
-                let totalVisits = 0;
-                let rowsHtml = '';
-                let index = 1;
-
-                for (const [inst, count] of Object.entries(inspectorsMap[inspName])) {
-                    totalVisits += count;
-                    rowsHtml += `<tr><td>${index++}</td><td style="text-align:right;">${inst}</td><td>${count}</td></tr>`;
-                }
-
-                page.innerHTML = `
-                    <div class="official-header">
-                        <div class="republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-                        <div class="ministry">وزارة التربية الوطنية</div>
-                        <div class="directorate">مديرية التربية لولاية : ${state}</div>
-                    </div>
-                    <div class="report-title">حصيلة الزيارات التفتيشية للموسم الدراسي ${seasonText}</div>
-                    <div class="inspector-info">اسم السيد المفتش: ${inspName}</div>
-                    <table class="report-table">
-                        <thead><tr><th style="width: 10%;">#</th><th>اسم المؤسسة المزارة</th><th style="width: 25%;">عدد الزيارات</th></tr></thead>
-                        <tbody>${rowsHtml}<tr class="total-row"><td colspan="2" style="text-align:left; padding-left:20px;">مجموع الزيارات:</td><td>${totalVisits}</td></tr></tbody>
-                    </table>
-                `;
-                container.appendChild(page);
-            });
-        }
-
-        // 2. تقرير فردي لمفتش
-        function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
-            const inspVisits = visits.filter(v => fetchField(v, ['المفتش', 'اسم المفتش', 'inspector']) === inspectorName);
-            const instMap = {};
-            let total = 0;
-
-            inspVisits.forEach(v => {
-                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
-                if (inst) {
-                    instMap[inst] = (instMap[inst] || 0) + 1;
-                    total++;
-                }
-            });
-
+        inspectorsList.forEach(inspName => {
             const page = document.createElement('div');
             page.className = 'report-page';
 
-            let rows = '';
-            let idx = 1;
-            for (const [inst, count] of Object.entries(instMap)) {
-                rows += `<tr><td>${idx++}</td><td style="text-align:right;">${inst}</td><td>${count}</td></tr>`;
+            let totalVisits = 0;
+            let rowsHtml = '';
+            let index = 1;
+
+            for (const [inst, count] of Object.entries(inspectorsMap[inspName])) {
+                totalVisits += count;
+                rowsHtml += `<tr><td>${index++}</td><td style="text-align:right;">${inst}</td><td>${count}</td></tr>`;
             }
 
             page.innerHTML = `
@@ -316,122 +182,133 @@
                     <div class="ministry">وزارة التربية الوطنية</div>
                     <div class="directorate">مديرية التربية لولاية : ${state}</div>
                 </div>
-                <div class="report-title">تقرير حصيلة الزيارات التفتيشية الفردية (${seasonText})</div>
-                <div class="inspector-info">المفتش: ${inspectorName}</div>
+                <div class="report-title">حصيلة الزيارات التفتيشية للموسم الدراسي ${seasonText}</div>
+                <div class="inspector-info">اسم السيد المفتش: ${inspName}</div>
                 <table class="report-table">
-                    <thead><tr><th>#</th><th>المؤسسة المزارة</th><th>عدد الزيارات</th></tr></thead>
-                    <tbody>
-                        ${rows || '<tr><td colspan="3">لا توجد زيارات مسجلة لهذا المفتش</td></tr>'}
-                        <tr class="total-row"><td colspan="2">المجموع الكلي:</td><td>${total}</td></tr>
-                    </tbody>
+                    <thead><tr><th style="width: 10%;">#</th><th>اسم المؤسسة المزارة</th><th style="width: 25%;">عدد الزيارات</th></tr></thead>
+                    <tbody>${rowsHtml}<tr class="total-row"><td colspan="2" style="text-align:left; padding-left:20px;">مجموع الزيارات:</td><td>${totalVisits}</td></tr></tbody>
                 </table>
             `;
             container.appendChild(page);
-        }
+        });
+    }
 
-        // 3. تقرير الزيارات حسب المواد (اعتماداً على تخصص المفتش)
-        function renderSubjectsReport(visits, seasonText, state, container) {
-            const secVisits = visits.filter(v => fetchField(v, ['المرحلة', 'stage']) === 'ثانوي');
-            
-            const subjectsSet = new Set();
-            const institutionsSet = new Set();
-            const matrix = {};
+    // 2. التقرير الفردي
+    function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
+        const inspVisits = visits.filter(v => getVal(v, ['اسم المفتش', 'المفتش', 'inspector']) === inspectorName);
+        const instMap = {};
+        let total = 0;
 
-            secVisits.forEach(v => {
-                const subj = getInspectorSpecialty(v);
-                const inst = fetchField(v, ['المؤسسة', 'اسم المؤسسة', 'institution']) || 'غير محددة';
-                
-                subjectsSet.add(subj);
-                institutionsSet.add(inst);
-
-                if (!matrix[inst]) matrix[inst] = {};
-                matrix[inst][subj] = (matrix[inst][subj] || 0) + 1;
-            });
-
-            const subjectsList = Array.from(subjectsSet).sort();
-            const institutionsList = Array.from(institutionsSet).sort();
-
-            const page = document.createElement('div');
-            page.className = 'report-page';
-
-            if (institutionsList.length === 0) {
-                page.innerHTML = '<div style="text-align:center; padding:30px; font-weight:bold;">لا توجد زيارات مسجلة للمرحلة الثانوية في هذا الموسم.</div>';
-                container.appendChild(page);
-                return;
+        inspVisits.forEach(v => {
+            const inst = getVal(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
+            if (inst) {
+                instMap[inst] = (instMap[inst] || 0) + 1;
+                total++;
             }
+        });
 
-            let headerHtml = '<tr><th>المؤسسة / تخصص المفتش (المادة)</th>';
-            subjectsList.forEach(sub => { headerHtml += `<th>${sub}</th>`; });
-            headerHtml += '<th>مجموع المؤسسة</th></tr>';
+        const page = document.createElement('div');
+        page.className = 'report-page';
 
-            let bodyHtml = '';
-            const subjectTotals = {};
-            subjectsList.forEach(s => subjectTotals[s] = 0);
-            let grandTotal = 0;
+        let rows = '';
+        let idx = 1;
+        for (const [inst, count] of Object.entries(instMap)) {
+            rows += `<tr><td>${idx++}</td><td style="text-align:right;">${inst}</td><td>${count}</td></tr>`;
+        }
 
-            institutionsList.forEach(inst => {
-                let instTotal = 0;
-                bodyHtml += `<tr><td style="text-align:right; font-weight:bold;">${inst}</td>`;
-                
-                subjectsList.forEach(sub => {
-                    const count = matrix[inst][sub] || 0;
-                    instTotal += count;
-                    subjectTotals[sub] += count;
-                    bodyHtml += `<td>${count || '-'}</td>`;
-                });
-                
-                grandTotal += instTotal;
-                bodyHtml += `<td style="font-weight:bold; background:#f8fafc;">${instTotal}</td></tr>`;
-            });
+        page.innerHTML = `
+            <div class="official-header">
+                <div class="republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                <div class="ministry">وزارة التربية الوطنية</div>
+                <div class="directorate">مديرية التربية لولاية : ${state}</div>
+            </div>
+            <div class="report-title">تقرير حصيلة الزيارات التفتيشية الفردية (${seasonText})</div>
+            <div class="inspector-info">المفتش: ${inspectorName}</div>
+            <table class="report-table">
+                <thead><tr><th>#</th><th>المؤسسة المزارة</th><th>عدد الزيارات</th></tr></thead>
+                <tbody>
+                    ${rows || '<tr><td colspan="3">لا توجد زيارات مسجلة لهذا المفتش</td></tr>'}
+                    <tr class="total-row"><td colspan="2">المجموع الكلي:</td><td>${total}</td></tr>
+                </tbody>
+            </table>
+        `;
+        container.appendChild(page);
+    }
 
-            let footerHtml = '<tr class="total-row"><td>مجموع زيارات المادة</td>';
-            subjectsList.forEach(sub => { footerHtml += `<td>${subjectTotals[sub]}</td>`; });
-            footerHtml += `<td>${grandTotal}</td></tr>`;
+    // 3. التقرير المجمع حسب تخصص المفتش (المادة)
+    function renderSubjectsReport(visits, seasonText, state, container) {
+        const secVisits = visits.filter(v => getVal(v, ['المرحلة التعليمية', 'المرحلة', 'stage']) === 'ثانوي');
+        
+        const subjectsSet = new Set();
+        const institutionsSet = new Set();
+        const matrix = {};
 
-            page.innerHTML = `
-                <div class="official-header">
-                    <div class="republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-                    <div class="ministry">وزارة التربية الوطنية</div>
-                    <div class="directorate">مديرية التربية لولاية : ${state}</div>
-                </div>
-                <div class="report-title">حوصلة الزيارات التفتيشية حسب مواد المفتشين (المرحلة الثانوية) - ${seasonText}</div>
-                <div style="overflow-x: auto;">
-                    <table class="report-table">
-                        <thead>${headerHtml}</thead>
-                        <tbody>${bodyHtml}</tbody>
-                        <tfoot>${footerHtml}</tfoot>
-                    </table>
-                </div>
-            `;
+        secVisits.forEach(v => {
+            const subj = getInspectorSpecialty(v);
+            const inst = getVal(v, ['المؤسسة', 'اسم المؤسسة', 'institution']) || 'غير محددة';
+            
+            subjectsSet.add(subj);
+            institutionsSet.add(inst);
+
+            if (!matrix[inst]) matrix[inst] = {};
+            matrix[inst][subj] = (matrix[inst][subj] || 0) + 1;
+        });
+
+        const subjectsList = Array.from(subjectsSet).sort();
+        const institutionsList = Array.from(institutionsSet).sort();
+
+        const page = document.createElement('div');
+        page.className = 'report-page';
+
+        if (institutionsList.length === 0) {
+            page.innerHTML = '<div style="text-align:center; padding:30px; font-weight:bold; color:#dc2626;">⚠️ لا توجد زيارات مسجلة للمرحلة الثانوية لهذا الموسم.</div>';
             container.appendChild(page);
+            return;
         }
 
-        function exportToExcel() {
-            const tables = document.querySelectorAll('.report-table');
-            if (tables.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
+        let headerHtml = '<tr><th>المؤسسة / تخصص المفتش (المادة)</th>';
+        subjectsList.forEach(sub => { headerHtml += `<th>${sub}</th>`; });
+        headerHtml += '<th>مجموع المؤسسة</th></tr>';
 
-            const wb = XLSX.utils.book_new();
-            tables.forEach((table, index) => {
-                const ws = XLSX.utils.table_to_sheet(table);
-                XLSX.utils.book_append_sheet(wb, ws, `تقرير_${index + 1}`);
+        let bodyHtml = '';
+        const subjectTotals = {};
+        subjectsList.forEach(s => subjectTotals[s] = 0);
+        let grandTotal = 0;
+
+        institutionsList.forEach(inst => {
+            let instTotal = 0;
+            bodyHtml += `<tr><td style="text-align:right; font-weight:bold;">${inst}</td>`;
+            
+            subjectsList.forEach(sub => {
+                const count = matrix[inst][sub] || 0;
+                instTotal += count;
+                subjectTotals[sub] += count;
+                bodyHtml += `<td>${count || '-'}</td>`;
             });
-            XLSX.writeFile(wb, `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.xlsx`);
-        }
+            
+            grandTotal += instTotal;
+            bodyHtml += `<td style="font-weight:bold; background:#f8fafc;">${instTotal}</td></tr>`;
+        });
 
-        function exportToPDF() {
-            const element = document.getElementById('reportOutput');
-            if (!element || element.children.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
+        let footerHtml = '<tr class="total-row"><td>مجموع زيارات المادة</td>';
+        subjectsList.forEach(sub => { footerHtml += `<td>${subjectTotals[sub]}</td>`; });
+        footerHtml += `<td>${grandTotal}</td></tr>`;
 
-            const opt = {
-                margin:       10,
-                filename:     `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save();
-        }
-    </script>
-</body>
-</html>
+        page.innerHTML = `
+            <div class="official-header">
+                <div class="republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                <div class="ministry">وزارة التربية الوطنية</div>
+                <div class="directorate">مديرية التربية لولاية : ${state}</div>
+            </div>
+            <div class="report-title">حوصلة الزيارات التفتيشية حسب مواد المفتشين (المرحلة الثانوية) - ${seasonText}</div>
+            <div style="overflow-x: auto;">
+                <table class="report-table">
+                    <thead>${headerHtml}</thead>
+                    <tbody>${bodyHtml}</tbody>
+                    <tfoot>${footerHtml}</tfoot>
+                </table>
+            </div>
+        `;
+        container.appendChild(page);
+    }
+</script>
