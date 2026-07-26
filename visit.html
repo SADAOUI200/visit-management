@@ -10,46 +10,18 @@
         .note-cell { white-space: normal !important; min-width: 250px; font-size: 0.85rem; color: #444; }
         #specialty[readonly] { background-color: #f3f4f6; font-weight: bold; }
         .search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 10px; }
-        /* تنسيق حاوية الأزرار داخل الخلية */
-        .action-btns {
-            display: flex;
-            gap: 8px; /* مسافة بين الزرين */
-            justify-content: center;
-        }
+        .btn-dash { color: #8b5cf6 !important; border: 1px solid #8b5cf6 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 5px; }
         
-        /* التنسيق العام للأزرار */
-        .btn-edit, .btn-delete {
-            padding: 6px 12px; /* حجم الزر */
-            font-size: 0.85rem; /* حجم الخط */
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-            color: white;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        /* تنسيق زر التعديل (أزرق) */
-        .btn-edit {
-            background-color: #2563eb; /* لون أزرق */
-        }
-        
-        .btn-edit:hover {
-            background-color: #1d4ed8; /* أزرق داكن عند تمرير الفأرة */
-        }
-        
-        /* تنسيق زر الحذف (أحمر) */
-        .btn-delete {
-            background-color: #dc2626; /* لون أحمر */
-        }
-        
-        .btn-delete:hover {
-            background-color: #b91c1c; /* أحمر داكن عند تمرير الفأرة */
-        }
+        /* زر التقارير الجديد */
+        .btn-reports { color: #10b981 !important; border: 1px solid #10b981 !important; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; margin-left: 5px; font-weight: bold; }
+        .btn-reports:hover { background-color: #10b981; color: white !important; }
+
+        .action-btns { display: flex; gap: 8px; justify-content: center; }
+        .btn-edit, .btn-delete { padding: 6px 12px; font-size: 0.85rem; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s ease; color: white; font-weight: bold; display: flex; align-items: center; gap: 4px; }
+        .btn-edit { background-color: #2563eb; }
+        .btn-edit:hover { background-color: #1d4ed8; }
+        .btn-delete { background-color: #dc2626; }
+        .btn-delete:hover { background-color: #b91c1c; }
     </style>
 </head>
 <body>
@@ -58,6 +30,8 @@
         <div class="brand">🏫 نظام إدارة الزيارات</div>
         <div class="nav-links">
             <span id="navUserInfo"></span>
+            <!-- إضافة زر التقارير وزر لوحة التحكم -->
+            <a href="reports.html" target="_blank" class="btn-reports">📊 التقارير</a>
             <a href="dashboard.html" class="btn-dash">⚙️ لوحة التحكم</a>
             <button class="btn btn-danger btn-sm" onclick="logout()">خروج</button>
         </div>
@@ -163,7 +137,6 @@
             const session = requireAuth(['admin', 'inspector', 'manager']);
             document.getElementById('navUserInfo').innerHTML = `مرحباً <strong>${session.name}</strong>`;
             
-            // تنسيق التاريخ القصير الافتراضي
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('vDate').value = today;
 
@@ -195,14 +168,12 @@
                 document.getElementById('specialty').value = insp ? insp['التخصص'] : '';
             };
 
-            // معالجة الإرسال
             document.getElementById('visitForm').onsubmit = async function(e) {
                 e.preventDefault();
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true; btn.innerText = 'جاري الإرسال...';
 
                 try {
-                    // 1. الإرسال السحابي الصامت (يتجاوز CORS)
                     const formData = new FormData(this);
                     const params = new URLSearchParams();
                     formData.forEach((value, key) => params.append(key, value));
@@ -210,7 +181,6 @@
 
                     fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'POST', mode: 'no-cors' });
 
-                    // 2. التحديث المحلي عبر visit.js
                     if (typeof handleVisitSubmit === 'function') {
                         await handleVisitSubmit(e);
                     }
