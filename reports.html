@@ -54,13 +54,13 @@
         
         .inspector-info { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-right: 5px solid #0284c7; color: #000; }
 
-        /* اعتماد اللون الأسود الكامل لجداول التقرير */
+        /* اعتماد اللون الأسود الكامل للجداول */
         .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1.05rem; color: #000000 !important; }
         .report-table th, .report-table td { border: 1px solid #000000 !important; padding: 8px 12px; text-align: center; color: #000000 !important; }
         .report-table th { background-color: #e2e8f0; font-weight: bold; color: #000000 !important; }
         .report-table .total-row { font-weight: bold; background-color: #f1f5f9; color: #000000 !important; }
 
-        /* تذييل الإمضاء والتاريخ في الجهة اليسرى أسفل الجدول */
+        /* تذييل الإمضاء والتاريخ بالجهة اليسرى */
         .report-footer { 
             margin-top: 30px; 
             float: left; 
@@ -171,12 +171,12 @@
             return `${yyyy}/${mm}/${dd}`;
         }
 
-        // بضعة أسطر لبناء تذييل الإمضاء والتاريخ
+        // التذييل المعدل: اسم الولاية + في + النقطتان + التاريخ
         function getReportFooterHTML(state) {
             const todayDate = getFormattedTodayDate();
             return `
                 <div class="report-footer">
-                    <div>مديرية التربية لولاية : ${state} : ${todayDate}</div>
+                    <div>${state} في : ${todayDate}</div>
                     <div style="margin-top: 5px;">إمضاء مدير التربية</div>
                 </div>
                 <div class="clear-fix"></div>
@@ -274,29 +274,103 @@
             }
         }
 
-        // 1. تقرير الموسم الشامل
+        // 1. تقرير الموسم الشامل (صفحة الإحصائيات الشاملة + صفحة لكل مفتش)
         function renderSeasonReport(visits, seasonText, state, container) {
-            const inspectorsMap = {};
-
-            visits.forEach(v => {
-                const insp = f(v, ['المفتش', 'اسم المفتش', 'الاسم الكامل', 'fullName', 'inspector']);
-                const inst = f(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
-                
-                if (!insp || !inst) return;
-
-                if (!inspectorsMap[insp]) inspectorsMap[insp] = {};
-                if (!inspectorsMap[insp][inst]) inspectorsMap[insp][inst] = 0;
-                inspectorsMap[insp][inst]++;
-            });
-
-            const inspectorsList = Object.keys(inspectorsMap);
-            if (inspectorsList.length === 0) {
+            if (visits.length === 0) {
                 container.innerHTML = `<div style="text-align:center; font-weight:bold; padding:40px; color:#dc2626;">
                     ⚠️ لم يتم العثور على أية إحصائيات مطابقة للموسم الدراسي (${seasonText}).
                 </div>`;
                 return;
             }
 
+            const stageStats = {
+                'ابتدائي': { visits: 0, inspectors: new Set(), institutions: new Set() },
+                'متوسط': { visits: 0, inspectors: new Set(), institutions: new Set() },
+                'ثانوي': { visits: 0, inspectors: new Set(), institutions: new Set() }
+            };
+
+            const inspectorsMap = {};
+
+            visits.forEach(v => {
+                const st = f(v, ['المرحلة', 'المرحلة التعليمية', 'level', 'stage']);
+                const insp = f(v, ['المفتش', 'اسم المفتش', 'الاسم الكامل', 'fullName', 'inspector']);
+                const inst = f(v, ['المؤسسة', 'اسم المؤسسة', 'institution']);
+
+                if (stageStats[st]) {
+                    stageStats[st].visits++;
+                    if (insp) stageStats[st].inspectors.add(insp);
+                    if (inst) stageStats[st].institutions.add(inst);
+                }
+
+                if (insp && inst) {
+                    if (!inspectorsMap[insp]) inspectorsMap[insp] = {};
+                    if (!inspectorsMap[insp][inst]) inspectorsMap[insp][inst] = 0;
+                    inspectorsMap[insp][inst]++;
+                }
+            });
+
+            // صفحة الإحصائيات العددية الإجمالية
+            const summaryPage = document.createElement('div');
+            summaryPage.className = 'report-page';
+
+            let totalVisitsAll = 0;
+            let totalInspectorsAll = new Set();
+            let totalInstitutionsAll = new Set();
+
+            let summaryRows = '';
+            ['ابتدائي', 'متوسط', 'ثانوي'].forEach((st, idx) => {
+                const countV = stageStats[st].visits;
+                const countI = stageStats[st].inspectors.size;
+                const countInst = stageStats[st].institutions.size;
+
+                totalVisitsAll += countV;
+                stageStats[st].inspectors.forEach(i => totalInspectorsAll.add(i));
+                stageStats[st].institutions.forEach(inst => totalInstitutionsAll.add(inst));
+
+                summaryRows += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td style="font-weight:bold;">التعليم ${st}</td>
+                        <td>${countI}</td>
+                        <td>${countInst}</td>
+                        <td style="font-weight:bold;">${countV}</td>
+                    </tr>
+                `;
+            });
+
+            summaryPage.innerHTML = `
+                <div class="official-header">
+                    <div class="republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                    <div class="ministry">وزارة التربية الوطنية</div>
+                    <div class="directorate">مديرية التربية لولاية : ${state}</div>
+                </div>
+                <div class="report-title">الإحصائيات العددية الإجمالية للزيارات التفتيشية (${seasonText})</div>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 8%;">#</th>
+                            <th>المرحلة التعليمية</th>
+                            <th>عدد المفتشين</th>
+                            <th>عدد المؤسسات المزارة</th>
+                            <th>عدد الزيارات الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summaryRows}
+                        <tr class="total-row">
+                            <td colspan="2">المجموع الكلي الإجمالي</td>
+                            <td>${totalInspectorsAll.size}</td>
+                            <td>${totalInstitutionsAll.size}</td>
+                            <td>${totalVisitsAll}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                ${getReportFooterHTML(state)}
+            `;
+            container.appendChild(summaryPage);
+
+            // الصفحات التفصيلية بكل مفتش
+            const inspectorsList = Object.keys(inspectorsMap);
             inspectorsList.forEach(inspName => {
                 const page = document.createElement('div');
                 page.className = 'report-page';
@@ -371,7 +445,7 @@
             container.appendChild(page);
         }
 
-        // 3. تقرير الزيارات حسب مواد المفتشين (مفصل ومفصول حسب المرحلة التعليمية المختارة)
+        // 3. تقرير الزيارات حسب مواد المفتشين (مراحل تعليمية)
         function renderSubjectsReport(visits, selectedStage, seasonText, state, container) {
             const stageVisits = visits.filter(v => {
                 const st = f(v, ['المرحلة', 'المرحلة التعليمية', 'level', 'stage']);
