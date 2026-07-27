@@ -215,6 +215,7 @@
             });
         }
 
+        // تم التعديل: حساب نطاق الزيارات من 01 سبتمبر وحتى 30 جوان من السنة الموالية
         function isVisitInAcademicYear(vDateStr, startYear) {
             if (!vDateStr || !startYear) return true;
             
@@ -222,7 +223,7 @@
             if (isNaN(vDate.getTime())) return true;
 
             const startRange = new Date(`${startYear}-09-01T00:00:00`);
-            const endRange = new Date(`${parseInt(startYear) + 1}-05-31T23:59:59`);
+            const endRange = new Date(`${parseInt(startYear) + 1}-06-30T23:59:59`);
 
             return vDate >= startRange && vDate <= endRange;
         }
@@ -530,9 +531,6 @@
             XLSX.writeFile(wb, `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        // التعديلات الجديدة على التصدير:
-        // 1- اسم ملف الـ PDF يتضمن اسم المفتش للتقرير الفردي
-        // 2- حجم الورقة A3 Landscape لتقرير المواد
         function exportToPDF() {
             const element = document.getElementById('reportOutput');
             if (!element || element.children.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
@@ -550,7 +548,7 @@
                 fileName = `تقرير_المفتش_${safeName}_${dateStr}.pdf`;
             } else if (reportType === 'subjects') {
                 orientationVal = 'landscape';
-                paperFormat = 'a3'; // جعل تقرير المواد على ورقة A3 أفقي
+                paperFormat = 'a3';
                 fileName = `تقرير_المواد_${dateStr}.pdf`;
             }
 
