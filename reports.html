@@ -54,13 +54,11 @@
         
         .inspector-info { font-size: 1.15rem; font-weight: bold; margin-bottom: 15px; background: #f1f5f9; padding: 8px 12px; border-right: 5px solid #0284c7; color: #000; }
 
-        /* اعتماد اللون الأسود الكامل والجداول المدمجة لتسهيل التصدير */
         .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; color: #000000 !important; }
         .report-table th, .report-table td { border: 1px solid #000000 !important; padding: 6px 8px; text-align: center; color: #000000 !important; white-space: nowrap; }
         .report-table th { background-color: #e2e8f0; font-weight: bold; color: #000000 !important; }
         .report-table .total-row { font-weight: bold; background-color: #f1f5f9; color: #000000 !important; }
 
-        /* تذييل الإمضاء والتاريخ بالجهة اليسرى */
         .report-footer { 
             margin-top: 25px; 
             float: left; 
@@ -217,12 +215,11 @@
             });
         }
 
-        // 2- الفلترة بحدود سبتمبر للعام الحالي وحتى ماي للعام الموالي
         function isVisitInAcademicYear(vDateStr, startYear) {
             if (!vDateStr || !startYear) return true;
             
             const vDate = new Date(vDateStr);
-            if (isNaN(vDate.getTime())) return true; // احتياط إذا كان التنسيق غير تاريخي
+            if (isNaN(vDate.getTime())) return true;
 
             const startRange = new Date(`${startYear}-09-01T00:00:00`);
             const endRange = new Date(`${parseInt(startYear) + 1}-05-31T23:59:59`);
@@ -257,7 +254,6 @@
                 return;
             }
 
-            // تصفية الزيارات بناءً على نطاق التاريخ المطلوب (سبتمبر - ماي)
             const visits = allVisitsData.filter(v => {
                 const vDateStr = f(v, ['التاريخ', 'تاريخ الزيارة', 'date', 'visitDate']);
                 return isVisitInAcademicYear(vDateStr, startYear);
@@ -275,7 +271,6 @@
             }
         }
 
-        // 1- التقرير الشامل (مع حساب المؤسسات دون تكرار لكل مرحلة)
         function renderSeasonReport(visits, seasonText, state, container) {
             if (visits.length === 0) {
                 container.innerHTML = `<div style="text-align:center; font-weight:bold; padding:40px; color:#dc2626;">
@@ -300,7 +295,6 @@
                 if (stageStats[st]) {
                     stageStats[st].visits++;
                     if (insp) stageStats[st].inspectors.add(insp);
-                    // تجميع أسماء المؤسسات في Set لحساب المؤسسة مرة واحدة فقط لكل مرحلة
                     if (inst) stageStats[st].institutions.add(inst);
                 }
 
@@ -311,7 +305,6 @@
                 }
             });
 
-            // صفحة الإحصائيات العامة الإجمالية
             const summaryPage = document.createElement('div');
             summaryPage.className = 'report-page';
 
@@ -323,7 +316,7 @@
             ['ابتدائي', 'متوسط', 'ثانوي'].forEach((st, idx) => {
                 const countV = stageStats[st].visits;
                 const countI = stageStats[st].inspectors.size;
-                const countInst = stageStats[st].institutions.size; // المحسوبة مرة واحدة فريدة
+                const countInst = stageStats[st].institutions.size;
 
                 totalVisitsAll += countV;
                 stageStats[st].inspectors.forEach(i => totalInspectorsAll.add(i));
@@ -371,7 +364,6 @@
             `;
             container.appendChild(summaryPage);
 
-            // الصفحات التفصيلية لكل مفتش
             const inspectorsList = Object.keys(inspectorsMap);
             inspectorsList.forEach(inspName => {
                 const page = document.createElement('div');
@@ -404,7 +396,6 @@
             });
         }
 
-        // 2- التقرير الفردي لمفتش
         function renderIndividualReport(visits, inspectorName, seasonText, state, container) {
             const inspVisits = visits.filter(v => f(v, ['المفتش', 'اسم المفتش', 'الاسم الكامل', 'fullName', 'inspector']) === inspectorName);
             const instMap = {};
@@ -447,7 +438,6 @@
             container.appendChild(page);
         }
 
-        // 3- تقرير المواد والتخصصات
         function renderSubjectsReport(visits, selectedStage, seasonText, state, container) {
             const stageVisits = visits.filter(v => {
                 const st = f(v, ['المرحلة', 'المرحلة التعليمية', 'level', 'stage']);
@@ -540,23 +530,36 @@
             XLSX.writeFile(wb, `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        // 3- ضبط التصدير إلى PDF (عمودي للتقارير العامة / أفقي ومناسب لتقرير المواد)
+        // التعديلات الجديدة على التصدير:
+        // 1- اسم ملف الـ PDF يتضمن اسم المفتش للتقرير الفردي
+        // 2- حجم الورقة A3 Landscape لتقرير المواد
         function exportToPDF() {
             const element = document.getElementById('reportOutput');
             if (!element || element.children.length === 0) { alert('الرجاء عرض التقرير أولاً'); return; }
 
             const reportType = document.getElementById('reportType').value;
+            const dateStr = new Date().toISOString().split('T')[0];
             
-            // تحديد الاتجاه المقاس للنوع (أفقي Landscape لتقرير المواد لكثرة الأعمدة، وعمودي Portrait للتقارير الأخرى)
-            const isSubjectsReport = (reportType === 'subjects');
-            const orientationVal = isSubjectsReport ? 'landscape' : 'portrait';
+            let fileName = `تقرير_الزيارات_${dateStr}.pdf`;
+            let paperFormat = 'a4';
+            let orientationVal = 'portrait';
+
+            if (reportType === 'individual') {
+                const inspectorName = document.getElementById('inspectorFilter').value;
+                const safeName = inspectorName ? inspectorName.replace(/[\/\s]/g, '_') : 'فردي';
+                fileName = `تقرير_المفتش_${safeName}_${dateStr}.pdf`;
+            } else if (reportType === 'subjects') {
+                orientationVal = 'landscape';
+                paperFormat = 'a3'; // جعل تقرير المواد على ورقة A3 أفقي
+                fileName = `تقرير_المواد_${dateStr}.pdf`;
+            }
 
             const opt = {
                 margin:       [8, 8, 8, 8],
-                filename:     `تقرير_الزيارات_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename:     fileName,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: orientationVal }
+                jsPDF:        { unit: 'mm', format: paperFormat, orientation: orientationVal }
             };
 
             html2pdf().set(opt).from(element).save();
